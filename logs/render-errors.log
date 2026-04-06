@@ -1,0 +1,32 @@
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=5m&includePrePost=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=5m&includePrePost=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v8/finance/chart/TSLA?range=5d&interval=1d&includePrePost=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v8/finance/chart/AMZN?range=5d&interval=1d&includePrePost=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v1/finance/search?q=AAPL&quotesCount=1&newsCount=6&enableFuzzyQuery=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v8/finance/chart/MSFT?range=5d&interval=1d&includePrePost=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v8/finance/chart/NVDA?range=5d&interval=1d&includePrePost=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=5d&interval=1d&includePrePost=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=5d&interval=1d&includePrePost=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=5d&interval=1d&includePrePost=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v8/finance/chart/TSLA?range=1d&interval=5m&includePrePost=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v8/finance/chart/AMZN?range=1d&interval=5m&includePrePost=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v8/finance/chart/MSFT?range=1d&interval=5m&includePrePost=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=5m&includePrePost=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v8/finance/chart/NVDA?range=1d&interval=5m&includePrePost=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
+[CONSOLE ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v1/finance/search?q=AMZN&quotesCount=1&newsCount=6&enableFuzzyQuery=false' from origin 'http://localhost:8899' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+[CONSOLE ERROR] Failed to load resource: net::ERR_FAILED
