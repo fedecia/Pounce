@@ -8,6 +8,8 @@ test('Pounce workspace uses stage navigation and supports a basic paper trade fl
   await expect(page.getByRole('heading', { name: 'What matters now' })).toBeVisible()
   await expect(page.getByTestId('pounce-story-strip')).toContainText('Pounce readout')
   await expect(page.getByTestId('share-card-mini')).toContainText('If you screenshotted this, it would make sense')
+  await expect(page.getByTestId('market-decision-canvas')).toContainText('Decision canvas overlay')
+  await expect(page.getByTestId('chart-overlay-legend')).toContainText('Trigger context')
   await expect(page.getByTestId('interactive-chart')).toBeVisible()
   await expect(page.getByTestId('chart-viewport-label')).toContainText('drag to pan')
   await expect(page.getByTestId('chart-readout-card')).toContainText('Viewport readout')
@@ -51,12 +53,19 @@ test('Pounce workspace uses stage navigation and supports a basic paper trade fl
   await page.getByLabel('Entry rationale').fill('Momentum reclaim through prior resistance.')
   await page.getByLabel('Trigger summary').fill('Only act on a clean reclaim with volume.')
   await page.getByLabel('Risk plan').fill('Cut it if the reclaim fails and momentum slips.')
+  await page.getByLabel('Invalidation summary').fill('Below the reclaim low means the setup is broken.')
   await page.getByRole('spinbutton', { name: /Shares/i }).fill('2')
   await expect(page.getByTestId('share-card-mini')).toContainText('Clean setup')
   await expect(page.getByTestId('share-card-mini')).toContainText('3/3 locked')
   await expect(page.getByRole('button', { name: /^Buy$/i })).toBeEnabled()
   await page.getByRole('button', { name: /^Buy$/i }).click()
 
+  await page.getByTestId('stage-tab-research').click()
+  await expect(page.getByTestId('market-decision-canvas')).toContainText('Reset feels priced in; trend quality is improving.')
+  await expect(page.getByTestId('market-decision-canvas')).toContainText('Only act on a clean reclaim with volume.')
+  await expect(page.getByTestId('chart-overlay-legend')).toContainText('Avg cost')
+
+  await page.getByTestId('stage-tab-act').click()
   await page.getByRole('button', { name: /Draft from research/i }).click()
   await expect(page.getByTestId('thesis-ai-draft')).toContainText(/AI-assisted draft/i)
 

@@ -12,6 +12,13 @@
   const CHART_HEIGHT = 180
   const MIN_WINDOW_POINTS = 12
 
+  type OverlayLevel = {
+    key: string
+    label: string
+    value: number
+    tone: 'trigger' | 'risk' | 'alert' | 'position'
+  }
+
   let seriesState: ChartSeries = {
     symbol: 'AAPL',
     timeframe: '1D',
@@ -228,18 +235,18 @@
   $: hoveredLabel = hoveredLocalIndex === visibleSeries.length - 1 ? 'Latest mark' : `Point ${hoveredAbsoluteIndex + 1}`
   $: overlayLevels = [
     journal.triggerSummary.trim() || journal.entryRationale.trim()
-      ? { key: 'trigger', label: `Trigger · ${snippet(journal.triggerSummary || journal.entryRationale, 'Trigger')}`, value: visibleEndValue, tone: 'trigger' }
+      ? { key: 'trigger', label: `Trigger · ${snippet(journal.triggerSummary || journal.entryRationale, 'Trigger')}`, value: visibleEndValue, tone: 'trigger' as const }
       : null,
     journal.invalidationSummary.trim() || journal.riskPlan.trim()
-      ? { key: 'risk', label: `Risk · ${snippet(journal.invalidationSummary || journal.riskPlan, 'Risk')}`, value: visibleLow + (visibleHigh - visibleLow) * 0.18, tone: 'risk' }
+      ? { key: 'risk', label: `Risk · ${snippet(journal.invalidationSummary || journal.riskPlan, 'Risk')}`, value: visibleLow + (visibleHigh - visibleLow) * 0.18, tone: 'risk' as const }
       : null,
     activeAlerts[0]
-      ? { key: activeAlerts[0].id, label: `Alert · ${activeAlerts[0].condition.startsWith('price') ? money(activeAlerts[0].target) : `${activeAlerts[0].target.toFixed(2)}%`}`, value: activeAlerts[0].condition.startsWith('price') ? activeAlerts[0].target : visibleEndValue, tone: 'alert' }
+      ? { key: activeAlerts[0].id, label: `Alert · ${activeAlerts[0].condition.startsWith('price') ? money(activeAlerts[0].target) : `${activeAlerts[0].target.toFixed(2)}%`}`, value: activeAlerts[0].condition.startsWith('price') ? activeAlerts[0].target : visibleEndValue, tone: 'alert' as const }
       : null,
     $store.portfolio[symbol]?.shares
-      ? { key: 'position', label: `Avg cost · ${money($store.portfolio[symbol].avgPrice)}`, value: $store.portfolio[symbol].avgPrice, tone: 'position' }
+      ? { key: 'position', label: `Avg cost · ${money($store.portfolio[symbol].avgPrice)}`, value: $store.portfolio[symbol].avgPrice, tone: 'position' as const }
       : null
-  ].filter((level) => Boolean(level && Number.isFinite(level.value) && level.value >= visibleLow && level.value <= visibleHigh))
+  ].filter((level): level is OverlayLevel => Boolean(level && Number.isFinite(level.value) && level.value >= visibleLow && level.value <= visibleHigh))
   $: tradeMarkers = symbolTrades.map((trade, index) => ({
     id: trade.id,
     label: `${trade.side} ${trade.qty} @ ${money(trade.price)}`,
@@ -317,9 +324,21 @@
     </div>
   </div>
 
-  <div class="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
+  <div class="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
     <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-      <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+      <div class="grid gap-3 lg:grid-cols-[1.2fr_0.8fr]" data-testid="market-decision-canvas">
+        <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-300">
+          <div class="text-[11px] uppercase tracking-[0.16em] text-cyan-300">Decision canvas overlay</div>
+          <div class="mt-2">The chart carries the setup instead of making you mentally stitch together price, thesis, alert levels, and recent execution.</div>
+        </div>
+        <div class="grid gap-2 text-xs text-slate-300">
+          <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2"><span class="text-slate-500">Thesis:</span> {thesisOverlay.thesis}</div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2"><span class="text-slate-500">Trigger:</span> {thesisOverlay.trigger}</div>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2"><span class="text-slate-500">Risk:</span> {thesisOverlay.risk}</div>
+        </div>
+      </div>
+
+      <div class="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
         <div data-testid="chart-viewport-label">{viewportLabel}</div>
         <div class="rounded-full border border-slate-700 px-3 py-1 text-slate-300">Zoom {zoomPercent}%</div>
       </div>
@@ -336,7 +355,7 @@
           endDrag()
         }}
       >
-        <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} class="h-52 w-full select-none">
+        <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} class="h-52 w-full select-none" data-testid="market-overview-chart">
           <defs>
             <linearGradient id="line-gradient" x1="0" x2="1">
               <stop offset="0%" stop-color="#38bdf8" />
@@ -352,7 +371,17 @@
             <line x1="0" y1="90" x2={CHART_WIDTH} y2="90" stroke="#1e293b" stroke-dasharray="6 6" />
             <line x1="0" y1="150" x2={CHART_WIDTH} y2="150" stroke="#1e293b" stroke-dasharray="6 6" />
             <path d={areaPath} fill="url(#area-gradient)" />
+            {#each overlayLevels as level, index}
+              {@const y = pointY(level.value, visibleLow, visibleHigh)}
+              <line x1="0" y1={y} x2={CHART_WIDTH} y2={y} class={`overlay-line ${level.tone}`} />
+              <rect x="312" y={Math.max(4, y - 12 - index * 2)} width="200" height="20" rx="10" class={`overlay-pill ${level.tone}`} />
+              <text x="322" y={Math.max(18, y + 2 - index * 2)} class="overlay-text">{level.label}</text>
+            {/each}
             <path d={chartPath} fill="none" stroke="url(#line-gradient)" stroke-width="4" stroke-linecap="round" />
+            {#each tradeMarkers as marker}
+              <line x1={marker.x} y1={CHART_HEIGHT} x2={marker.x} y2={marker.y} class={`trade-stem ${marker.side === 'BUY' ? 'buy' : 'sell'}`} />
+              <circle cx={marker.x} cy={marker.y} r="5" class={`trade-dot ${marker.side === 'BUY' ? 'buy' : 'sell'}`} />
+            {/each}
             {#if visibleSeries.length > 1}
               <line x1={hoveredX} y1="0" x2={hoveredX} y2={CHART_HEIGHT} stroke="rgba(148,163,184,0.45)" stroke-dasharray="4 4" />
             {/if}
@@ -361,7 +390,7 @@
         </svg>
         <div class="mt-3 flex justify-between text-xs uppercase tracking-[0.2em] text-slate-500">
           <span>{zoomed ? 'Windowed view' : timeframe}</span>
-          <span>{symbol} trend</span>
+          <span>{symbol} decision canvas</span>
           <span>{hoveredLabel}</span>
         </div>
       </div>
@@ -392,15 +421,39 @@
         </div>
       </div>
 
+      <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4" data-testid="chart-overlay-legend">
+        <div class="text-xs uppercase tracking-[0.16em] text-slate-500">Overlay legend</div>
+        <div class="mt-3 flex flex-wrap gap-2 text-xs">
+          <span class="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-cyan-200">Trigger context</span>
+          <span class="rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-rose-200">Invalidation watch</span>
+          <span class="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-amber-200">Alert rail</span>
+          <span class="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-emerald-200">Avg cost</span>
+        </div>
+        <div class="mt-3 text-xs text-slate-400">Trade stems mark the most recent buys and sells for this symbol so execution sits on the same canvas as the setup.</div>
+      </div>
+
       <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
         <div class="text-xs uppercase tracking-[0.16em] text-slate-500">How to use it</div>
         <div class="mt-2 space-y-2 text-slate-300">
           <div>• Drag the chart to pan through the current timeframe.</div>
           <div>• Use the wheel or zoom buttons to compress or expand the visible window.</div>
           <div>• Hover anywhere to inspect the local mark instead of only the last price.</div>
+          <div>• Use the overlay lines as a planning layer, not decoration.</div>
         </div>
         <div class="mt-3 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs text-slate-400">
           {timeframeHint(timeframe)}
+        </div>
+        <div class="mt-3 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-3 text-xs text-slate-300">
+          <div class="text-slate-500">Recent markers</div>
+          {#if tradeMarkers.length}
+            <ul class="mt-2 space-y-1">
+              {#each tradeMarkers as marker}
+                <li>{marker.label}</li>
+              {/each}
+            </ul>
+          {:else}
+            <div class="mt-2 text-slate-500">No trades logged yet for this symbol.</div>
+          {/if}
         </div>
       </div>
     </div>
@@ -429,4 +482,42 @@
     border-color: rgba(56, 189, 248, 0.45);
     color: white;
   }
+
+  .overlay-line {
+    stroke-width: 2;
+    stroke-dasharray: 8 6;
+    opacity: 0.9;
+  }
+
+  .overlay-line.trigger { stroke: #22d3ee; }
+  .overlay-line.risk { stroke: #fb7185; }
+  .overlay-line.alert { stroke: #f59e0b; }
+  .overlay-line.position { stroke: #34d399; }
+
+  .overlay-pill {
+    stroke-width: 1;
+  }
+
+  .overlay-pill.trigger { fill: rgba(34, 211, 238, 0.16); stroke: rgba(34, 211, 238, 0.5); }
+  .overlay-pill.risk { fill: rgba(251, 113, 133, 0.16); stroke: rgba(251, 113, 133, 0.5); }
+  .overlay-pill.alert { fill: rgba(245, 158, 11, 0.16); stroke: rgba(245, 158, 11, 0.5); }
+  .overlay-pill.position { fill: rgba(52, 211, 153, 0.16); stroke: rgba(52, 211, 153, 0.5); }
+
+  .overlay-text {
+    fill: #e2e8f0;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .trade-stem {
+    stroke-width: 2;
+    stroke-dasharray: 4 4;
+    opacity: 0.75;
+  }
+
+  .trade-stem.buy { stroke: #34d399; }
+  .trade-stem.sell { stroke: #fb7185; }
+  .trade-dot.buy { fill: #34d399; }
+  .trade-dot.sell { fill: #fb7185; }
 </style>
