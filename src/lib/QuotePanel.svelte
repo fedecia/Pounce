@@ -1,11 +1,13 @@
 <script lang="ts">
   import { fetchQuote } from '../alpha'
   import store, { buy, getJournal, sell, setOrderTicket, setQuote, setSelectedSymbol, updateTradeJournal } from '../store'
-  import type { OrderType, SetupStatus, TradeJournal } from '../types'
+  import type { OrderType, SetupConviction, SetupPriority, SetupStatus, TradeJournal } from '../types'
 
   const presets = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'META']
   const orderTypes: OrderType[] = ['Market', 'Limit', 'Stop']
   const setupStatuses: SetupStatus[] = ['Watching', 'Building', 'Ready', 'Executed', 'Reviewing']
+  const convictionOptions: SetupConviction[] = ['Low', 'Medium', 'High']
+  const priorityOptions: SetupPriority[] = ['Back burner', 'Standard', 'Top']
   const money = (value: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
 
@@ -19,11 +21,16 @@
   let selectedTif: 'Day' | 'GTC' = 'Day'
   let selectedOrderType: OrderType = 'Market'
   let thesis = ''
+  let thesisSummary = ''
   let entryRationale = ''
+  let triggerSummary = ''
   let riskPlan = ''
+  let invalidationSummary = ''
   let exitPlan = ''
   let postTradeNotes = ''
   let setupStatus: SetupStatus = 'Watching'
+  let conviction: SetupConviction = 'Medium'
+  let priority: SetupPriority = 'Standard'
   let lastJournalSymbol = ''
 
   $: if ($store.selectedSymbol && $store.selectedSymbol !== ticker.toUpperCase().trim()) {
@@ -75,9 +82,9 @@
         : position.shares < sanitizedQty
           ? `Only ${position.shares} shares available to sell.`
           : ''
-  $: journalHint = thesis.trim()
-    ? 'Thesis will be attached to the next execution.'
-    : 'Add a thesis so your trade history captures why the position existed.'
+  $: journalHint = thesis.trim() || thesisSummary.trim()
+    ? 'Setup context will be attached to the next execution.'
+    : 'Add a thesis and trigger so the watchlist becomes a real setup queue.'
   $: void [
     projectedBuyingPower,
     projectedPositionShares,
@@ -90,22 +97,32 @@
   $: if (symbol && symbol !== lastJournalSymbol) {
     const journal = getJournal(symbol, $store.journals)
     thesis = journal.thesis
+    thesisSummary = journal.thesisSummary
     entryRationale = journal.entryRationale
+    triggerSummary = journal.triggerSummary
     riskPlan = journal.riskPlan
+    invalidationSummary = journal.invalidationSummary
     exitPlan = journal.exitPlan
     postTradeNotes = journal.postTradeNotes
     setupStatus = journal.setupStatus
+    conviction = journal.conviction
+    priority = journal.priority
     lastJournalSymbol = symbol
   }
 
   function currentJournal(): Partial<TradeJournal> {
     return {
       thesis,
+      thesisSummary,
       setupStatus,
       entryRationale,
+      triggerSummary,
       riskPlan,
+      invalidationSummary,
       exitPlan,
-      postTradeNotes
+      postTradeNotes,
+      conviction,
+      priority
     }
   }
 
@@ -332,8 +349,8 @@
     <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
       <div class="flex items-center justify-between gap-3">
         <div>
-          <div class="text-sm font-medium text-white">Trade thesis</div>
-          <div class="text-xs text-slate-500">Write down why the setup exists before the simulated money moves.</div>
+          <div class="text-sm font-medium text-white">Setup worksheet</div>
+          <div class="text-xs text-slate-500">Define the setup once so watchlist, alerts, trades, and later reviews all share the same context.</div>
         </div>
         <div class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">
           {setupStatus}
@@ -341,10 +358,6 @@
       </div>
 
       <div class="mt-4 grid gap-3 md:grid-cols-2">
-        <label class="block md:col-span-2">
-          <span class="mb-2 block text-sm text-slate-400">Core thesis</span>
-          <textarea bind:value={thesis} rows="3" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="What do you think the market is mispricing here?"></textarea>
-        </label>
         <label class="block">
           <span class="mb-2 block text-sm text-slate-400">Setup status</span>
           <select bind:value={setupStatus} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500">
@@ -354,12 +367,44 @@
           </select>
         </label>
         <label class="block">
+          <span class="mb-2 block text-sm text-slate-400">Conviction</span>
+          <select bind:value={conviction} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500">
+            {#each convictionOptions as option}
+              <option value={option}>{option}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="block">
+          <span class="mb-2 block text-sm text-slate-400">Priority</span>
+          <select bind:value={priority} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500">
+            {#each priorityOptions as option}
+              <option value={option}>{option}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="block">
+          <span class="mb-2 block text-sm text-slate-400">Thesis snippet</span>
+          <input bind:value={thesisSummary} maxlength="120" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="One-line version of the setup" />
+        </label>
+        <label class="block md:col-span-2">
+          <span class="mb-2 block text-sm text-slate-400">Core thesis</span>
+          <textarea bind:value={thesis} rows="3" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="What do you think the market is mispricing here?"></textarea>
+        </label>
+        <label class="block">
+          <span class="mb-2 block text-sm text-slate-400">Trigger summary</span>
+          <input bind:value={triggerSummary} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="What confirms entry?" />
+        </label>
+        <label class="block">
+          <span class="mb-2 block text-sm text-slate-400">Invalidation summary</span>
+          <input bind:value={invalidationSummary} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="What breaks the idea?" />
+        </label>
+        <label class="block">
           <span class="mb-2 block text-sm text-slate-400">Entry rationale</span>
           <input bind:value={entryRationale} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="Breakout, pullback, catalyst, valuation, etc." />
         </label>
         <label class="block">
           <span class="mb-2 block text-sm text-slate-400">Risk plan</span>
-          <input bind:value={riskPlan} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="Invalidation, sizing, or stop discipline" />
+          <input bind:value={riskPlan} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="Sizing, stop discipline, or conditions to step aside" />
         </label>
         <label class="block">
           <span class="mb-2 block text-sm text-slate-400">Exit plan</span>
@@ -377,7 +422,7 @@
           <div class="text-slate-500">{journalHint}</div>
         </div>
         <button type="button" on:click={saveJournal} class="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:border-sky-500/50 hover:text-white">
-          Save thesis
+          Save setup
         </button>
       </div>
     </div>

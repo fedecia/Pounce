@@ -2,19 +2,23 @@ import { writable } from 'svelte/store'
 import type {
   AlertCondition,
   AlertEvent,
+  AlertNextAction,
   OrderType,
   Portfolio,
+  SetupConviction,
+  SetupPriority,
   SetupStatus,
   Timeframe,
   Trade,
   TradeJournal,
   WatchlistAlert
 } from './types'
+import { getStrategyTemplate } from './templates'
 
 type Trend = Record<string, { change: number; pct: number }>
 type Journals = Record<string, TradeJournal>
 
-type AppState = {
+export type AppState = {
   cash: number
   startingCash: number
   portfolio: Portfolio
@@ -38,6 +42,8 @@ const STORAGE_KEY = 'monopolystreet-state'
 const MAX_TRADES = 25
 const MAX_ALERT_HISTORY = 20
 const DEFAULT_SETUP_STATUS: SetupStatus = 'Watching'
+const DEFAULT_CONVICTION: SetupConviction = 'Medium'
+const DEFAULT_PRIORITY: SetupPriority = 'Standard'
 
 const initialState: AppState = {
   cash: 10000,
@@ -66,11 +72,16 @@ function clone<T>(value: T): T {
 function emptyJournal(setupStatus: SetupStatus = DEFAULT_SETUP_STATUS): TradeJournal {
   return {
     thesis: '',
+    thesisSummary: '',
     entryRationale: '',
+    triggerSummary: '',
     riskPlan: '',
+    invalidationSummary: '',
     exitPlan: '',
     postTradeNotes: '',
-    setupStatus
+    setupStatus,
+    conviction: DEFAULT_CONVICTION,
+    priority: DEFAULT_PRIORITY
   }
 }
 
@@ -78,13 +89,27 @@ function normalizeJournal(value?: Partial<TradeJournal> | null, fallbackStatus: 
   return {
     ...emptyJournal(fallbackStatus),
     ...(value ?? {}),
-    setupStatus: value?.setupStatus ?? fallbackStatus
+    setupStatus: value?.setupStatus ?? fallbackStatus,
+    conviction: value?.conviction ?? DEFAULT_CONVICTION,
+    priority: value?.priority ?? DEFAULT_PRIORITY
   }
 }
 
 function hasJournalContent(journal: TradeJournal) {
-  return [journal.thesis, journal.entryRationale, journal.riskPlan, journal.exitPlan, journal.postTradeNotes]
-    .some((field) => field.trim().length > 0)
+  return [
+    journal.thesis,
+    journal.thesisSummary,
+    journal.entryRationale,
+    journal.triggerSummary,
+    journal.riskPlan,
+    journal.invalidationSummary,
+    journal.exitPlan,
+    journal.postTradeNotes
+  ].some((field) => field.trim().length > 0)
+}
+
+function fillTemplateField(current: string, templateValue: string, mode: 'prefill' | 'replace') {
+  return mode === 'replace' || !current.trim() ? templateValue : current
 }
 
 function loadState(): AppState {
@@ -112,6 +137,8 @@ function loadState(): AppState {
 }
 
 const store = writable<AppState>(loadState())
+
+export type { Journals, Trend }
 
 if (typeof localStorage !== 'undefined') {
   store.subscribe((value) => {
@@ -157,6 +184,24 @@ function describeAlert(condition: AlertCondition, target: number, baselinePrice?
   }
 }
 
+function summarizeField(value: string, fallback: string, length = 120) {
+  const clean = value.trim()
+  if (!clean) return fallback
+  return clean.length > length ? `${clean.slice(0, length - 1)}…` : clean
+}
+
+function preferredAlertAction(setupStatus: SetupStatus): AlertNextAction {
+  switch (setupStatus) {
+    case 'Ready':
+      return 'enter'
+    case 'Executed':
+    case 'Reviewing':
+      return 'review'
+    default:
+      return 'review'
+  }
+}
+
 function isTriggered(alert: WatchlistAlert, price: number) {
   switch (alert.condition) {
     case 'price-above':
@@ -175,6 +220,7 @@ function evaluateAlerts(state: AppState, symbol: string, price: number) {
   if (!alerts.length) return { alertsBySymbol: state.alerts, history: state.alertHistory }
 
   const timestamp = new Date().toISOString()
+  const journal = getJournal(symbol, state.journals)
   const newEvents: AlertEvent[] = []
   const updatedAlerts: WatchlistAlert[] = alerts.map((alert) => {
     if (alert.status === 'triggered') {
@@ -194,7 +240,16 @@ function evaluateAlerts(state: AppState, symbol: string, price: number) {
       baselinePrice: alert.baselinePrice,
       price,
       timestamp,
-      message: `${symbol} ${describeAlert(alert.condition, alert.target, alert.baselinePrice)} at $${price.toFixed(2)}`
+      message: `${symbol} ${describeAlert(alert.condition, alert.target, alert.baselinePrice)} at $${price.toFixed(2)}`,
+      whyItMatters: summarizeField(journal.thesisSummary || journal.thesis || journal.entryRationale, 'No thesis logged yet — capture why this symbol deserves attention.'),
+      thesisStatus: journal.setupStatus,
+      triggerSummary: journal.triggerSummary.trim() || describeAlert(alert.condition, alert.target, alert.baselinePrice),
+      setupSummary: summarizeField(
+        journal.entryRationale || journal.invalidationSummary || journal.riskPlan || journal.exitPlan,
+        'No setup notes yet — review the trigger before acting.'
+      ),
+      nextAction: preferredAlertAction(journal.setupStatus),
+      workflowState: 'pending'
     })
 
     return {
@@ -233,6 +288,40 @@ export function updateTradeJournal(ticker: string, updates: Partial<TradeJournal
       [symbol]: normalizeJournal({ ...getJournal(symbol, state.journals), ...updates }, updates.setupStatus ?? state.journals[symbol]?.setupStatus ?? DEFAULT_SETUP_STATUS)
     }
   }))
+}
+
+export function applyStrategyTemplate(ticker: string, templateId: string, mode: 'prefill' | 'replace' = 'prefill') {
+  const symbol = ticker.toUpperCase().trim()
+  if (!symbol) return
+
+  const template = getStrategyTemplate(templateId)
+  if (!template) throw new Error('Unknown strategy template')
+
+  store.update((state) => {
+    const current = getJournal(symbol, state.journals)
+    const reviewBlock = [template.postTradePrompt, ...template.reviewQuestions.map((question) => `• ${question}`)].join('\n')
+
+    return {
+      ...state,
+      journals: {
+        ...state.journals,
+        [symbol]: normalizeJournal({
+          ...current,
+          thesis: fillTemplateField(current.thesis, template.thesis, mode),
+          thesisSummary: fillTemplateField(current.thesisSummary, template.summary, mode),
+          entryRationale: fillTemplateField(current.entryRationale, template.entryRationale, mode),
+          triggerSummary: fillTemplateField(current.triggerSummary, template.entryRationale, mode),
+          riskPlan: fillTemplateField(current.riskPlan, template.riskPlan, mode),
+          invalidationSummary: fillTemplateField(current.invalidationSummary, template.riskPlan, mode),
+          exitPlan: fillTemplateField(current.exitPlan, `${template.exitPlan} Holding period: ${template.holdingPeriod}.`, mode),
+          postTradeNotes: fillTemplateField(current.postTradeNotes, reviewBlock, mode),
+          setupStatus: mode === 'replace' || current.setupStatus === DEFAULT_SETUP_STATUS ? template.setupStatus : current.setupStatus,
+          strategyTemplateId: template.id,
+          strategyTemplateName: template.name
+        }, current.setupStatus)
+      }
+    }
+  })
 }
 
 export function setSelectedSymbol(ticker: string) {
@@ -320,6 +409,21 @@ export function deleteAlert(ticker: string, alertId: string) {
 
 export function clearAlertHistory() {
   store.update((state) => ({ ...state, alertHistory: [] }))
+}
+
+export function updateAlertEventAction(eventId: string, workflowState: AlertEvent['workflowState'], snoozedUntil?: string) {
+  store.update((state) => ({
+    ...state,
+    alertHistory: state.alertHistory.map((event) =>
+      event.id === eventId
+        ? {
+            ...event,
+            workflowState,
+            snoozedUntil: workflowState === 'snoozed' ? snoozedUntil : undefined
+          }
+        : event
+    )
+  }))
 }
 
 export function setQuote(ticker: string, price: number, change: number, pct: number) {
