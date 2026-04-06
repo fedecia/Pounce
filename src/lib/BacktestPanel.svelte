@@ -26,11 +26,11 @@
       <div class="text-xs uppercase tracking-[0.2em] text-amber-300">Backtest</div>
       <h2 class="mt-1 text-lg font-semibold text-white">Would this have worked?</h2>
       <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-        First pass: generate a plain-English read on whether this setup is defined enough to deserve a real backtest run.
+        First pass: get a plain-English read on whether this setup is defined enough to deserve a real backtest run.
       </p>
     </div>
     <button on:click={generateSummary} class="rounded-xl bg-amber-500 px-4 py-3 text-sm font-medium text-slate-950 transition hover:bg-amber-400" disabled={loading}>
-      {loading ? 'Explaining…' : 'Explain this setup like a backtest coach'}
+      {loading ? 'Explaining…' : 'Give me the backtest read'}
     </button>
   </div>
 
@@ -55,7 +55,7 @@
       </div>
 
       <div class="rounded-2xl border border-slate-800 bg-slate-900/80 p-4 xl:col-span-2">
-        <div class="text-xs uppercase tracking-[0.16em] text-slate-500">What this says in practice</div>
+        <div class="text-xs uppercase tracking-[0.16em] text-slate-500">What this means in practice</div>
         <div class="mt-3 grid gap-2 md:grid-cols-3">
           {#each summary.bullets as bullet}
             <div class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-3 text-sm text-slate-200">{bullet}</div>
@@ -66,7 +66,7 @@
     </div>
   {:else}
     <div class="mt-4 rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-4 text-sm text-slate-400">
-      No summary yet. Generate one after you outline the thesis, trigger, and risk plan so the app can tell you whether the idea is even backtest-ready.
+      No backtest read yet. Generate one after you outline the thesis, trigger, and risk plan so the app can tell you whether the idea is even ready for that step.
     </div>
   {/if}
 </div>

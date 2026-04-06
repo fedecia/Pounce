@@ -8,8 +8,8 @@
   const ai = createAiClient()
 
   const fallback: ResearchSnapshot = {
-    catalyst: 'Loading live company context…',
-    thesis: 'Pulling recent headlines and company metadata for a less fake research view.',
+    catalyst: 'Loading company context…',
+    thesis: 'Pulling recent headlines and company details so this page reads like research, not filler.',
     headlines: [],
     signals: ['Fetching context'],
     sourceLabel: 'Loading'
@@ -75,7 +75,7 @@
   $: trend = $store.trend[symbol]
   $: price = $store.prices[symbol] || $store.quotes[symbol] || 0
   $: aiState = getSymbolAiState(symbol, $store.ai)
-  $: momentum = trend ? `${trend.pct >= 0 ? '+' : ''}${trend.pct.toFixed(2)}% today` : 'Awaiting quote refresh'
+  $: momentum = trend ? `${trend.pct >= 0 ? '+' : ''}${trend.pct.toFixed(2)}% today` : 'Waiting for a quote refresh'
   $: if (symbol && symbol !== lastLoadedSymbol) {
     loadResearch(symbol)
   }
@@ -85,12 +85,12 @@
   <div class="mb-5 flex items-start justify-between gap-3">
     <div>
       <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Research hub</p>
-      <h2 class="mt-1 text-lg font-semibold text-white">News &amp; analyst context</h2>
+      <h2 class="mt-1 text-lg font-semibold text-white">News + context</h2>
     </div>
     <div class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-right">
       <div class="text-xs text-slate-500">Focus</div>
       <div class="text-sm font-semibold text-white">{symbol}</div>
-      <div class="text-xs text-slate-500">{price ? `$${price.toFixed(2)}` : 'No live quote'} · {momentum}</div>
+      <div class="text-xs text-slate-500">{price ? `$${price.toFixed(2)}` : 'No quote yet'} · {momentum}</div>
     </div>
   </div>
 
@@ -100,7 +100,7 @@
         <div class="mb-3 flex items-center justify-between gap-3">
           <div>
             <div class="text-xs uppercase tracking-[0.16em] text-sky-300">AI research brief</div>
-            <div class="mt-1 text-sm text-slate-400">Compress the moving pieces before you start writing a thesis.</div>
+            <div class="mt-1 text-sm text-slate-400">Get the moving pieces into plain English before you start writing the setup.</div>
           </div>
           <button on:click={refreshAiBrief} class="rounded-xl border border-sky-500/30 bg-slate-950/70 px-3 py-2 text-xs text-sky-200 transition hover:border-sky-400/60 hover:text-white" disabled={aiLoading}>
             {aiLoading ? 'Refreshing…' : 'Refresh brief'}
@@ -126,7 +126,7 @@
           </div>
           <div class="mt-3 text-xs text-slate-500">{aiState.researchBrief.meta.advisory}</div>
         {:else}
-          <div class="text-sm text-slate-400">AI brief not generated yet.</div>
+          <div class="text-sm text-slate-400">No AI brief yet.</div>
         {/if}
       </div>
 
@@ -135,7 +135,7 @@
         <div class="mt-2 text-sm leading-6 text-slate-300">{research.catalyst}</div>
       </div>
       <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-        <div class="text-xs uppercase tracking-[0.16em] text-slate-500">Desk view</div>
+        <div class="text-xs uppercase tracking-[0.16em] text-slate-500">What stands out</div>
         <div class="mt-2 text-sm leading-6 text-slate-300">{research.thesis}</div>
       </div>
       <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
@@ -162,7 +162,7 @@
       <div class="space-y-3">
         {#if research.headlines.length === 0}
           <div class="rounded-xl border border-dashed border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-400">
-            No live headlines came back for this symbol, so the panel is using a conservative fallback.
+            No fresh headlines came back for this symbol, so the panel is falling back to a conservative summary.
           </div>
         {:else}
           {#each research.headlines as item}

@@ -43,7 +43,7 @@
 
   {#if enriched.length === 0}
     <div class="rounded-xl border border-dashed border-slate-700 bg-slate-950/60 px-4 py-8 text-center text-sm text-slate-500">
-      No positions yet. Quote a symbol and place a paper trade to populate the book.
+      No positions yet. Pull a quote and place a paper trade when you're ready to start the book.
     </div>
   {:else}
     <div class="space-y-3">
@@ -61,10 +61,10 @@
               <div class="mt-2 max-w-xl text-sm leading-6 text-slate-300">{snippet(position.journal.thesisSummary || position.journal.thesis)}</div>
               <div class="mt-3 grid gap-2 text-xs text-slate-400 md:grid-cols-2">
                 <div class="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2">
-                  <span class="text-slate-500">Trigger:</span> {snippet(position.journal.triggerSummary || position.journal.entryRationale, 60, 'No trigger logged.')}
+                  <span class="text-slate-500">Trigger:</span> {snippet(position.journal.triggerSummary || position.journal.entryRationale, 60, 'No trigger saved yet.')}
                 </div>
                 <div class="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2">
-                  <span class="text-slate-500">Invalidation:</span> {snippet(position.journal.invalidationSummary || position.journal.riskPlan, 60, 'No invalidation logged.')}
+                  <span class="text-slate-500">Invalidation:</span> {snippet(position.journal.invalidationSummary || position.journal.riskPlan, 60, 'No invalidation saved yet.')}
                 </div>
               </div>
             </div>

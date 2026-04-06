@@ -98,8 +98,8 @@
       upsertAlert(selectedSymbol, condition, value, isPercent ? selectedQuote : undefined)
       alertValue = ''
       alertSuccess = isPercent
-        ? `${selectedSymbol} alert armed for ${alertDirection === 'above' ? 'a rise' : 'a drop'} of ${value.toFixed(2)}% from ${money(selectedQuote)}.`
-        : `${selectedSymbol} alert armed for ${alertDirection === 'above' ? 'a move above' : 'a move below'} ${money(value)}.`
+        ? `${selectedSymbol} alert is live for ${alertDirection === 'above' ? 'a rise' : 'a drop'} of ${value.toFixed(2)}% from ${money(selectedQuote)}.`
+        : `${selectedSymbol} alert is live for ${alertDirection === 'above' ? 'a move above' : 'a move below'} ${money(value)}.`
     } catch (error) {
       alertError = error instanceof Error ? error.message : 'Could not create alert'
     }
@@ -138,13 +138,13 @@
     <div class="mb-4 flex items-center justify-between">
       <div>
         <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Watchlist</p>
-        <h2 class="mt-1 text-lg font-semibold text-white">Setup queue</h2>
+        <h2 class="mt-1 text-lg font-semibold text-white">Watchlist</h2>
       </div>
       <span class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">{$store.watchlist.length} symbols</span>
     </div>
 
     <div class="mb-4 flex gap-2">
-      <input bind:value={newTicker} maxlength="8" placeholder="Add ticker" class="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-500" />
+      <input bind:value={newTicker} maxlength="8" placeholder="Add a symbol" class="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-500" />
       <button on:click={addSymbol} disabled={loading} class="rounded-xl bg-brand-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-brand-500 disabled:opacity-50">
         Add
       </button>
@@ -181,7 +181,7 @@
               <div class="pr-1 text-right">
                 <div class="font-medium text-white">{price ? money(price) : '—'}</div>
                 <div class:text-emerald-400={trend && trend.change >= 0} class:text-rose-400={trend && trend.change < 0} class="text-xs">
-                  {trend ? `${trend.pct >= 0 ? '+' : ''}${trend.pct.toFixed(2)}%` : 'Awaiting quote'}
+                  {trend ? `${trend.pct >= 0 ? '+' : ''}${trend.pct.toFixed(2)}%` : 'Quote coming in'}
                 </div>
               </div>
             </button>
@@ -195,7 +195,7 @@
               <span class="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] text-emerald-200">{triggeredCount} triggered</span>
             {/if}
             {#if !activeCount && !triggeredCount}
-              <span class="rounded-full border border-slate-700 bg-slate-900/80 px-2.5 py-1 text-[11px] text-slate-400">No alerts armed</span>
+              <span class="rounded-full border border-slate-700 bg-slate-900/80 px-2.5 py-1 text-[11px] text-slate-400">No alerts set</span>
             {/if}
           </div>
         </div>
@@ -207,12 +207,12 @@
     <div class="flex items-start justify-between gap-4">
       <div>
         <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Alert center</p>
-        <h2 class="mt-1 text-lg font-semibold text-white">{selectedSymbol} triggers</h2>
-        <p class="mt-1 text-sm text-slate-400">Arm alerts against a setup, not just a price. The setup context stays visible while the mark updates.</p>
+        <h2 class="mt-1 text-lg font-semibold text-white">{selectedSymbol} alerts</h2>
+        <p class="mt-1 text-sm text-slate-400">Set alerts around the setup, not just the price. The context stays visible while the mark updates.</p>
       </div>
       <div class="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-right text-xs text-slate-400">
-        <div>Mark</div>
-        <div class="mt-1 text-sm font-medium text-white">{selectedQuote ? money(selectedQuote) : 'Awaiting quote'}</div>
+        <div>Current mark</div>
+        <div class="mt-1 text-sm font-medium text-white">{selectedQuote ? money(selectedQuote) : 'Quote coming in'}</div>
       </div>
     </div>
 
@@ -236,7 +236,7 @@
 
     <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
       <label class="block">
-        <span class="mb-2 block text-sm text-slate-400">Trigger type</span>
+            <span class="mb-2 block text-sm text-slate-400">Alert type</span>
         <select bind:value={alertMode} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500">
           <option value="price">Price level</option>
           <option value="percent">Percent move</option>
@@ -260,9 +260,9 @@
 
     <div class="mt-3 rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-xs text-slate-400">
       {#if alertMode === 'percent'}
-        Percent alerts anchor to the current mark when armed: <span class="font-medium text-white">{selectedQuote ? money(selectedQuote) : 'fetch a quote first'}</span>.
+        Percent alerts anchor to the current mark when you set them: <span class="font-medium text-white">{selectedQuote ? money(selectedQuote) : 'fetch a quote first'}</span>.
       {:else}
-        Price alerts trigger the first time the refreshed mark crosses your level.
+        Price alerts fire the first time the refreshed mark crosses your level.
       {/if}
     </div>
 
@@ -275,7 +275,7 @@
 
     <div class="mt-5 space-y-3">
       <div class="flex items-center justify-between">
-        <h3 class="text-sm font-medium text-white">Active + triggered for {selectedSymbol}</h3>
+        <h3 class="text-sm font-medium text-white">Active + triggered alerts for {selectedSymbol}</h3>
         <span class="text-xs text-slate-500">{symbolAlerts.length} total</span>
       </div>
       {#if symbolAlerts.length}
@@ -310,14 +310,14 @@
         {/each}
       {:else}
         <div class="rounded-xl border border-dashed border-slate-700 bg-slate-950/50 px-4 py-5 text-sm text-slate-400">
-          No alerts yet. Arm a level for {selectedSymbol} and let quote refreshes do the work.
+          No alerts yet. Set one for {selectedSymbol} and let quote refreshes do the watching.
         </div>
       {/if}
     </div>
 
     <div class="mt-5 space-y-3">
       <div class="flex items-center justify-between">
-        <h3 class="text-sm font-medium text-white">Recent trigger history</h3>
+        <h3 class="text-sm font-medium text-white">Recently triggered</h3>
         <button on:click={clearAlertHistory} disabled={!$store.alertHistory.length} class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Clear</button>
       </div>
       {#if recentHistory.length}
@@ -329,7 +329,7 @@
             <div class="mt-1 text-xs text-slate-500">{new Date(event.timestamp).toLocaleString()}</div>
             <div class="mt-3 flex items-center justify-between gap-3">
               <button on:click={() => explainEvent(event.id)} class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-sky-500/50 hover:text-white" disabled={explainingEventId === event.id}>
-                {explainingEventId === event.id ? 'Explaining…' : 'Explain this alert'}
+                {explainingEventId === event.id ? 'Explaining…' : 'Explain what changed'}
               </button>
             </div>
             {#if alertExplanation}
@@ -352,16 +352,16 @@
 
   <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-2xl shadow-black/20 backdrop-blur">
     <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Market pulse</p>
-    <h2 class="mt-1 text-lg font-semibold text-white">Session notes</h2>
+    <h2 class="mt-1 text-lg font-semibold text-white">Quick notes</h2>
     <div class="mt-4 space-y-3 text-sm text-slate-400">
       <div class="rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3">
-        Tech remains bid in this simulated tape, with momentum names showing the strongest relative trend.
+        In this simulated tape, tech is still leading and momentum names are showing the strongest relative trend.
       </div>
       <div class="rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3">
-        Alerts now piggyback on quote refreshes, so a quick watchlist scan can actually surface setups.
+        Alerts ride on top of quote refreshes, so a quick watchlist scan can actually surface setups.
       </div>
       <div class="rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3">
-        Watchlist rows now carry thesis, trigger, invalidation, and priority — the useful bits, not just the ticker.
+        Watchlist rows carry the thesis, trigger, invalidation, and priority — the useful stuff, not just the ticker.
       </div>
     </div>
   </div>

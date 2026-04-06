@@ -5,23 +5,23 @@
   const groups = [
     {
       key: 'openWithoutThesis',
-      label: 'Open positions missing thesis',
+      label: 'Open positions missing a thesis',
       empty: 'Every open position has a reason attached.'
     },
     {
       key: 'openWithoutRisk',
-      label: 'Open positions missing risk plan',
-      empty: 'Open risk has at least a basic invalidation plan.'
+      label: 'Open positions missing a risk plan',
+      empty: 'Every open risk has at least a basic invalidation plan.'
     },
     {
       key: 'reviewMissingNotes',
-      label: 'Closed trades waiting on review',
+      label: 'Closed trades still waiting on review',
       empty: 'Closed trades already have review notes logged.'
     },
     {
       key: 'staleReady',
       label: 'Ready setups that went stale',
-      empty: 'No old ready setups are clogging the bench.'
+      empty: 'No old ready setups are sitting around collecting dust.'
     }
   ] as const
 
@@ -44,7 +44,7 @@
     <div>
       <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Accountability</p>
       <h2 class="mt-1 text-lg font-semibold text-white">What needs attention</h2>
-      <p class="mt-1 max-w-2xl text-sm text-slate-400">This is the anti-random-clicking view: unfinished theses, missing risk plans, stale ready setups, and trades that never got reviewed.</p>
+      <p class="mt-1 max-w-2xl text-sm text-slate-400">This is the anti-random-clicking view: unfinished setups, missing risk plans, stale ready ideas, and trades that never got reviewed.</p>
     </div>
     <div class="grid gap-3 sm:grid-cols-3">
       <div class="rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm">
@@ -56,7 +56,7 @@
         <div class="mt-1 text-2xl font-semibold text-white">{summary.symbolsNeedingAttention}</div>
       </div>
       <div class="rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm">
-        <div class="text-slate-500">Workflow hygiene</div>
+        <div class="text-slate-500">Workflow health</div>
         <div class="mt-1 text-2xl font-semibold text-white">{summary.completionRate.toFixed(0)}%</div>
       </div>
     </div>

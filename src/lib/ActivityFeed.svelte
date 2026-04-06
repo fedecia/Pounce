@@ -39,7 +39,7 @@
   <div class="mb-4 flex items-center justify-between">
     <div>
       <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Activity</p>
-      <h2 class="text-lg font-semibold text-white">Recent trades</h2>
+      <h2 class="text-lg font-semibold text-white">Recent activity</h2>
     </div>
     <span class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">
       {$store.trades.length} recorded
@@ -48,7 +48,7 @@
 
   {#if $store.trades.length === 0}
     <div class="rounded-xl border border-dashed border-slate-700 bg-slate-950/60 px-4 py-8 text-center text-sm text-slate-500">
-      No trades yet. Fetch a quote, write the thesis, and place your first paper trade.
+      No trades yet. Pull a quote, write the setup, and place your first paper trade when you're ready.
     </div>
   {:else}
     <div class="space-y-3">
@@ -66,7 +66,7 @@
             </div>
             <div class="text-right">
               <div class="font-medium text-white">{fmtMoney(trade.value)}</div>
-              <div class="text-xs text-slate-500">notional</div>
+              <div class="text-xs text-slate-500">trade value</div>
             </div>
           </div>
 
@@ -88,7 +88,7 @@
               <span class="rounded-full border border-slate-700 bg-slate-900/80 px-2.5 py-1 text-emerald-300">{trade.journal.conviction}</span>
               <span class="rounded-full border border-slate-700 bg-slate-900/80 px-2.5 py-1 text-violet-300">{trade.journal.priority}</span>
             {/if}
-            <span class="rounded-full border border-slate-700 bg-slate-900/80 px-2.5 py-1 text-slate-400">Execution stored locally</span>
+            <span class="rounded-full border border-slate-700 bg-slate-900/80 px-2.5 py-1 text-slate-400">Saved locally</span>
           </div>
         </div>
       {/each}

@@ -2,10 +2,12 @@
   import { fetchQuote } from '../alpha'
   import { createAiClient, getSymbolAiState } from '../ai'
   import { fetchResearchSnapshot } from '../research'
-  import store, { buy, getJournal, saveThesisCritique, saveThesisDraft, sell, setOrderTicket, setQuote, setSelectedSymbol, updateTradeJournal } from '../store'
-  import type { OrderType, SetupConviction, SetupPriority, SetupStatus, TradeJournal } from '../types'
+  import { strategyTemplates } from '../templates'
+  import store, { applyStrategyTemplate, buy, getJournal, saveThesisCritique, saveThesisDraft, sell, setOrderTicket, setQuote, setSelectedSymbol, updateTradeJournal } from '../store'
+  import type { DeskTone, OrderType, SetupConviction, SetupPriority, SetupStatus, StrategyTemplateId, TradeJournal } from '../types'
 
   export let mode: 'thesis' | 'act' = 'act'
+  export let tone: DeskTone = 'classic'
 
   const presets = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'META']
   const orderTypes: OrderType[] = ['Market', 'Limit', 'Stop']
@@ -37,6 +39,7 @@
   let setupStatus: SetupStatus = 'Watching'
   let conviction: SetupConviction = 'Medium'
   let priority: SetupPriority = 'Standard'
+  let selectedTemplateId = ''
   let lastJournalSymbol = ''
 
   $: if ($store.selectedSymbol && $store.selectedSymbol !== ticker.toUpperCase().trim()) {
@@ -59,7 +62,7 @@
   $: buyDisabledReason = !symbol
     ? 'Enter a ticker symbol.'
     : !effectivePrice
-      ? 'Fetch a quote or enter a trigger price to enable the order.'
+      ? 'Pull a quote or enter a trigger price to enable the order.'
       : sanitizedQty <= 0
         ? 'Share quantity must be at least 1.'
         : orderValue > $store.cash
@@ -82,15 +85,15 @@
   $: sellDisabledReason = !position
     ? 'No position to sell yet.'
     : !effectivePrice
-      ? 'Fetch a quote or enter a trigger price to enable the order.'
+      ? 'Pull a quote or enter a trigger price to enable the order.'
       : sanitizedQty <= 0
         ? 'Share quantity must be at least 1.'
         : position.shares < sanitizedQty
           ? `Only ${position.shares} shares available to sell.`
           : ''
   $: journalHint = thesis.trim() || thesisSummary.trim()
-    ? 'Setup context will be attached to the next execution.'
-    : 'Add a thesis and trigger so the watchlist becomes a real setup queue.'
+    ? 'This setup context will be attached to the next trade.'
+    : 'Add the thesis and trigger so the watchlist becomes a real queue, not just a list.'
   $: aiState = getSymbolAiState(symbol, $store.ai)
   $: void [
     projectedBuyingPower,
@@ -114,7 +117,12 @@
     setupStatus = journal.setupStatus
     conviction = journal.conviction
     priority = journal.priority
+    selectedTemplateId = journal.strategyTemplateId ?? ''
     lastJournalSymbol = symbol
+  }
+
+  function templateLabel(template: (typeof strategyTemplates)[number]) {
+    return tone === 'playful' ? `${template.name} · ${template.nickname}` : template.name
   }
 
   function currentJournal(): Partial<TradeJournal> {
@@ -158,7 +166,7 @@
       invalidationSummary = draft.invalidationSummary
       riskPlan = draft.riskPlan
       exitPlan = draft.exitPlan
-      success = `Drafted an AI-assisted thesis for ${symbol}. Review it before saving or trading.`
+      success = `Drafted an AI-assisted setup for ${symbol}. Review it before saving or trading.`
       error = ''
     } catch (e) {
       error = e instanceof Error ? e.message : 'Could not draft thesis'
@@ -178,7 +186,7 @@
         research
       })
       saveThesisCritique(symbol, critique)
-      success = `Critiqued the current ${symbol} thesis. Use the gaps list as a cleanup pass, not gospel.`
+      success = `Reviewed the current ${symbol} thesis. Use the gaps list as a cleanup pass, not gospel.`
       error = ''
     } catch (e) {
       error = e instanceof Error ? e.message : 'Could not critique thesis'
@@ -189,7 +197,7 @@
 
   async function getPrice() {
     if (!symbol) {
-      error = 'Enter a ticker symbol'
+      error = 'Enter a ticker symbol.'
       return
     }
 
@@ -217,9 +225,9 @@
   }
 
   function executionPrice() {
-    if (!quote && selectedOrderType === 'Market') throw new Error('Get price first')
+    if (!quote && selectedOrderType === 'Market') throw new Error('Pull a price first.')
     const price = selectedOrderType === 'Limit' ? limitPrice : selectedOrderType === 'Stop' ? stopPrice : quote || 0
-    if (!price || price <= 0) throw new Error('Enter a valid trigger price')
+    if (!price || price <= 0) throw new Error('Enter a valid trigger price.')
     return price
   }
 
@@ -233,7 +241,7 @@
       success = `Bought ${sanitizedQty} ${sanitizedQty === 1 ? 'share' : 'shares'} of ${symbol} at ${money(price)}.`
     } catch (e) {
       success = ''
-      error = e instanceof Error ? e.message : 'Purchase failed'
+      error = e instanceof Error ? e.message : 'Buy order failed.'
     }
   }
 
@@ -247,20 +255,29 @@
       success = `Sold ${sanitizedQty} ${sanitizedQty === 1 ? 'share' : 'shares'} of ${symbol} at ${money(price)}.`
     } catch (e) {
       success = ''
-      error = e instanceof Error ? e.message : 'Sale failed'
+      error = e instanceof Error ? e.message : 'Sell order failed.'
     }
   }
 
   function useMaxBuyShares() {
     if (maxBuyShares > 0) qty = maxBuyShares
   }
+
+  function loadTemplate() {
+    if (!symbol || !selectedTemplateId) return
+    applyStrategyTemplate(symbol, selectedTemplateId as StrategyTemplateId, 'prefill')
+    lastJournalSymbol = ''
+    const template = strategyTemplates.find((item) => item.id === selectedTemplateId)
+    success = template ? `${templateLabel(template)} loaded into the setup worksheet.` : 'Strategy starter loaded.'
+    error = ''
+  }
 </script>
 
 <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-2xl shadow-black/20 backdrop-blur">
   <div class="mb-5 flex items-start justify-between gap-4">
     <div>
-      <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Quote workstation</p>
-      <h2 class="mt-1 text-lg font-semibold text-white">{mode === 'thesis' ? 'Build the setup' : 'Research &amp; execute'}</h2>
+      <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Quote workspace</p>
+      <h2 class="mt-1 text-lg font-semibold text-white">{mode === 'thesis' ? 'Build the setup' : 'Quote + trade'}</h2>
     </div>
     <button on:click={getPrice} disabled={fetching} class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-60">
       {fetching ? 'Fetching…' : 'Refresh quote'}
@@ -271,7 +288,7 @@
   <div class="mt-2 flex gap-2">
     <input id="ticker-input" bind:value={ticker} maxlength="8" class="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-lg uppercase tracking-wide text-white outline-none transition focus:border-sky-500" placeholder="AAPL" />
     <button on:click={getPrice} disabled={fetching} class="rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white disabled:opacity-50">
-      Get price
+      Get quote
     </button>
   </div>
 
@@ -333,7 +350,7 @@
     <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div>
         <p class="text-sm font-medium text-white">{mode === 'thesis' ? 'Setup builder + ticket' : 'Trade ticket'}</p>
-        <p class="text-xs text-slate-500">{mode === 'thesis' ? 'Use the setup worksheet first; the order controls are still visible here because this prototype has not fully split thesis from execution yet.' : 'Configure the order style, notional, trigger levels, and journal context before placing a paper trade.'}</p>
+        <p class="text-xs text-slate-500">{mode === 'thesis' ? 'Use the setup worksheet first. The order controls still live here because this prototype has not fully split planning from execution yet.' : 'Set the order style, size, trigger levels, and setup context before placing a paper trade.'}</p>
       </div>
       <div class="text-right">
         <p class="text-xs text-slate-500">Estimated notional</p>
@@ -362,7 +379,7 @@
         <div class="space-y-2">
           <input type="number" bind:value={qty} min="1" step="1" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" />
           <div class="flex items-center justify-between text-xs text-slate-500">
-            <span>Max affordable: {maxBuyShares} shares</span>
+            <span>Max you can afford: {maxBuyShares} shares</span>
             <button type="button" on:click={useMaxBuyShares} disabled={maxBuyShares === 0} class="rounded-full border border-slate-700 px-2.5 py-1 font-medium text-slate-300 transition hover:border-sky-500/50 hover:text-sky-300 disabled:cursor-not-allowed disabled:opacity-50">
               Use max
             </button>
@@ -382,7 +399,7 @@
       {:else}
         <div class="rounded-xl border border-slate-800 bg-slate-900/80 px-4 py-3">
           <div class="text-sm text-slate-400">Execution price</div>
-          <div class="mt-2 text-lg font-semibold text-white">{quote ? money(quote) : 'Awaiting quote'}</div>
+          <div class="mt-2 text-lg font-semibold text-white">{quote ? money(quote) : 'No quote yet'}</div>
         </div>
       {/if}
     </div>
@@ -406,10 +423,33 @@
       <div class="flex items-center justify-between gap-3">
         <div>
           <div class="text-sm font-medium text-white">Setup worksheet</div>
-          <div class="text-xs text-slate-500">Define the setup once so watchlist, alerts, trades, and later reviews all share the same context.</div>
+          <div class="text-xs text-slate-500">Define the setup once so the watchlist, alerts, trades, and later reviews all share the same context.</div>
         </div>
         <div class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">
           {setupStatus}
+        </div>
+      </div>
+
+      <div class="mt-4 rounded-xl border border-slate-800 bg-slate-950/70 p-4" data-testid="strategy-template-card">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div class="text-sm font-medium text-white">Strategy starter</div>
+            <div class="text-xs text-slate-500">Optional shorthand for common setups. Helpful name, same discipline.</div>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] lg:min-w-[420px]">
+            <label class="block">
+              <span class="mb-2 block text-sm text-slate-400">Template</span>
+              <select bind:value={selectedTemplateId} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" data-testid="strategy-template-select">
+                <option value="">Pick a starter</option>
+                {#each strategyTemplates as template}
+                  <option value={template.id}>{templateLabel(template)}</option>
+                {/each}
+              </select>
+            </label>
+            <button type="button" on:click={loadTemplate} disabled={!selectedTemplateId} class="rounded-xl border border-amber-500/30 px-4 py-3 text-sm text-amber-200 transition hover:border-amber-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">
+              Load starter
+            </button>
+          </div>
         </div>
       </div>
 
@@ -439,16 +479,16 @@
           </select>
         </label>
         <label class="block">
-          <span class="mb-2 block text-sm text-slate-400">Thesis snippet</span>
-          <input bind:value={thesisSummary} maxlength="120" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="One-line version of the setup" />
+          <span class="mb-2 block text-sm text-slate-400">One-line thesis</span>
+          <input bind:value={thesisSummary} maxlength="120" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="The one-line version of the setup" />
         </label>
         <label class="block md:col-span-2">
           <span class="mb-2 block text-sm text-slate-400">Core thesis</span>
-          <textarea bind:value={thesis} rows="3" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="What do you think the market is mispricing here?"></textarea>
+          <textarea bind:value={thesis} rows="3" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="What do you think the market is getting wrong here?"></textarea>
         </label>
         <label class="block">
           <span class="mb-2 block text-sm text-slate-400">Trigger summary</span>
-          <input bind:value={triggerSummary} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="What confirms entry?" />
+          <input bind:value={triggerSummary} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="What tells you it's time to enter?" />
         </label>
         <label class="block">
           <span class="mb-2 block text-sm text-slate-400">Invalidation summary</span>
@@ -456,36 +496,36 @@
         </label>
         <label class="block">
           <span class="mb-2 block text-sm text-slate-400">Entry rationale</span>
-          <input bind:value={entryRationale} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="Breakout, pullback, catalyst, valuation, etc." />
+          <input bind:value={entryRationale} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="Breakout, pullback, catalyst, valuation, and so on" />
         </label>
         <label class="block">
           <span class="mb-2 block text-sm text-slate-400">Risk plan</span>
-          <input bind:value={riskPlan} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="Sizing, stop discipline, or conditions to step aside" />
+          <input bind:value={riskPlan} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="Sizing, stop discipline, or when you'll stay out" />
         </label>
         <label class="block">
           <span class="mb-2 block text-sm text-slate-400">Exit plan</span>
-          <input bind:value={exitPlan} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="Targets, trim zones, catalyst window" />
+          <input bind:value={exitPlan} class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="Targets, trim zones, or catalyst timing" />
         </label>
         <label class="block md:col-span-2">
           <span class="mb-2 block text-sm text-slate-400">Post-trade / review notes</span>
-          <textarea bind:value={postTradeNotes} rows="2" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="What changed? What did you miss? What would you repeat?"></textarea>
+          <textarea bind:value={postTradeNotes} rows="2" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-500" placeholder="What changed? What did you miss? What would you do again?" ></textarea>
         </label>
       </div>
 
       <div class="mt-4 flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/80 px-4 py-3 text-sm">
         <div>
-          <div class="font-medium text-white">Journal status</div>
+          <div class="font-medium text-white">Setup status</div>
           <div class="text-slate-500">{journalHint}</div>
         </div>
         <div class="flex flex-wrap justify-end gap-2">
           <button type="button" on:click={draftThesisFromResearch} class="rounded-xl border border-violet-500/30 px-4 py-2 text-sm text-violet-200 transition hover:border-violet-400/60 hover:text-white" disabled={aiWorking !== ''}>
-            {aiWorking === 'draft' ? 'Drafting…' : 'Draft thesis from research'}
+            {aiWorking === 'draft' ? 'Drafting…' : 'Draft from research'}
           </button>
           <button type="button" on:click={critiqueCurrentThesis} class="rounded-xl border border-amber-500/30 px-4 py-2 text-sm text-amber-200 transition hover:border-amber-400/60 hover:text-white" disabled={aiWorking !== ''}>
             {aiWorking === 'critique' ? 'Critiquing…' : 'Stress-test my thesis'}
           </button>
           <button type="button" on:click={saveJournal} class="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:border-sky-500/50 hover:text-white">
-            Save setup
+            Save setup notes
           </button>
         </div>
       </div>
@@ -540,7 +580,7 @@
       <div class="flex items-center justify-between gap-3">
         <div>
           <div class="text-sm font-medium text-white">Trade preview</div>
-          <div class="text-xs text-slate-500">Sanity-check buying power and resulting position before you submit.</div>
+          <div class="text-xs text-slate-500">Sanity-check buying power and the resulting position before you place the trade.</div>
         </div>
         <div class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">
           {sanitizedQty} {sanitizedQty === 1 ? 'share' : 'shares'}
@@ -582,10 +622,10 @@
 
     <div class="mt-4 flex flex-wrap gap-3">
       <button on:click={onBuy} disabled={!!buyDisabledReason} class="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50">
-        Buy shares
+        Buy
       </button>
       <button on:click={onSell} disabled={!canSell} class="rounded-xl bg-rose-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50">
-        Sell shares
+        Sell
       </button>
     </div>
   </div>
