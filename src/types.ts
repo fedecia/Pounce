@@ -31,6 +31,8 @@ export type AlertNextAction = 'review' | 'enter' | 'skip' | 'snooze'
 export type AlertWorkflowState = 'pending' | 'reviewed' | 'skipped' | 'snoozed'
 export type SetupConviction = 'Low' | 'Medium' | 'High'
 export type SetupPriority = 'Back burner' | 'Standard' | 'Top'
+export type DeskTone = 'classic' | 'playful'
+
 export type StrategyTemplateId =
   | 'breakout-continuation'
   | 'pullback-uptrend'
@@ -41,6 +43,7 @@ export type StrategyTemplateId =
 export interface StrategyTemplate {
   id: StrategyTemplateId
   name: string
+  nickname: string
   summary: string
   setupStatus: SetupStatus
   holdingPeriod: string

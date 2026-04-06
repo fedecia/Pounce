@@ -4,6 +4,7 @@ export const strategyTemplates: StrategyTemplate[] = [
   {
     id: 'breakout-continuation',
     name: 'Breakout continuation',
+    nickname: 'Door kicker',
     summary: 'For names pressing through resistance with trend, volume, and a clean risk line.',
     setupStatus: 'Ready',
     holdingPeriod: '1 day to 3 weeks',
@@ -21,6 +22,7 @@ export const strategyTemplates: StrategyTemplate[] = [
   {
     id: 'pullback-uptrend',
     name: 'Pullback in uptrend',
+    nickname: 'Second-chance lift',
     summary: 'For buying orderly weakness inside an existing trend instead of buying the first spike.',
     setupStatus: 'Building',
     holdingPeriod: '2 days to 4 weeks',
@@ -38,6 +40,7 @@ export const strategyTemplates: StrategyTemplate[] = [
   {
     id: 'earnings-follow-through',
     name: 'Earnings follow-through',
+    nickname: 'Afterglow',
     summary: 'For post-earnings names where guidance, gap behavior, and day-two action matter more than the headline alone.',
     setupStatus: 'Ready',
     holdingPeriod: '1 day to 10 trading days',
@@ -55,6 +58,7 @@ export const strategyTemplates: StrategyTemplate[] = [
   {
     id: 'oversold-bounce',
     name: 'Oversold bounce',
+    nickname: 'Dead-cat with rules',
     summary: 'For tactical reflex rallies where the edge depends on mean-reversion, not pretending it is a full trend change.',
     setupStatus: 'Watching',
     holdingPeriod: 'Intraday to 5 trading days',
@@ -72,6 +76,7 @@ export const strategyTemplates: StrategyTemplate[] = [
   {
     id: 'thesis-driven-swing',
     name: 'Thesis-driven swing starter',
+    nickname: 'Slow burn',
     summary: 'For slower swings where the setup starts with a real narrative and catalyst map, not just a chart screenshot.',
     setupStatus: 'Building',
     holdingPeriod: '1 to 8 weeks',
