@@ -129,11 +129,13 @@
             Focus: <span class="font-semibold text-white">{$store.selectedSymbol}</span>
           </div>
         </div>
+        <div class="mb-3 text-xs text-slate-500">Jump by stage now; these can become dedicated views later.</div>
         <div class="flex flex-wrap gap-2">
           {#each workflowSteps as step, index}
             <a
               href={`#${step.id}`}
               class="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-300 transition hover:border-sky-500/50 hover:text-white"
+              aria-label={`${String(index + 1).padStart(2, '0')} ${step.label} — ${step.description}`}
             >
               <span class="mr-2 text-xs text-slate-500">0{index + 1}</span>{step.label}
             </a>
