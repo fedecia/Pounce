@@ -11,7 +11,9 @@
   import BacktestPanel from './lib/BacktestPanel.svelte'
   import TradeJournalPanel from './lib/TradeJournalPanel.svelte'
   import { fetchQuote } from './alpha'
-  import store, { resetStore, setQuote } from './store'
+  import store, { getJournal, resetStore, setQuote } from './store'
+
+  const STORAGE_KEY = 'pounce-active-stage'
 
   const workflowSteps = [
     { id: 'research', label: 'Research', description: 'What matters now' },
@@ -20,10 +22,14 @@
     { id: 'monitor', label: 'Monitor', description: 'What needs attention' },
     { id: 'act', label: 'Act', description: 'Place the trade' },
     { id: 'review', label: 'Review', description: 'Learn from the outcome' }
-  ]
+  ] as const
+
+  type WorkflowStage = (typeof workflowSteps)[number]['id']
 
   const money = (value: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value)
+
+  let activeStage: WorkflowStage = 'research'
 
   async function refreshWatchlistQuotes(symbols: string[]) {
     await Promise.all(
@@ -39,7 +45,29 @@
     )
   }
 
+  function selectStage(stage: WorkflowStage) {
+    activeStage = stage
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, stage)
+    }
+  }
+
+  function restoreStage() {
+    if (typeof localStorage === 'undefined') return
+    const stored = localStorage.getItem(STORAGE_KEY) as WorkflowStage | null
+    if (stored && workflowSteps.some((step) => step.id === stored)) {
+      activeStage = stored
+    }
+  }
+
+  function stageButtonClass(stage: WorkflowStage) {
+    return activeStage === stage
+      ? 'border-sky-400/60 bg-sky-500/15 text-white shadow-lg shadow-sky-900/20'
+      : 'border-slate-700 bg-slate-950/70 text-slate-300 hover:border-slate-500 hover:text-white'
+  }
+
   onMount(() => {
+    restoreStage()
     refreshWatchlistQuotes($store.watchlist)
   })
 
@@ -51,6 +79,32 @@
   $: activeQuotes = Object.keys($store.quotes).length
   $: watchlistBreadth = $store.watchlist.length
   $: winColor = totalPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'
+  $: selectedJournal = getJournal($store.selectedSymbol, $store.journals)
+  $: thesisReady = Boolean(selectedJournal.thesisSummary.trim() || selectedJournal.thesis.trim())
+  $: triggerReady = Boolean(selectedJournal.triggerSummary.trim() || selectedJournal.entryRationale.trim())
+  $: riskReady = Boolean(selectedJournal.riskPlan.trim() || selectedJournal.invalidationSummary.trim())
+  $: thesisScore = [thesisReady, triggerReady, riskReady].filter(Boolean).length
+  $: activeAlertCount = ($store.alerts[$store.selectedSymbol] ?? []).filter((alert) => alert.status === 'active').length
+  $: triggeredAlertCount = ($store.alerts[$store.selectedSymbol] ?? []).filter((alert) => alert.status === 'triggered').length
+  $: hasPosition = Boolean($store.portfolio[$store.selectedSymbol]?.shares)
+  $: reviewCount = $store.trades.filter((trade) => trade.journal?.setupStatus === 'Reviewing').length
+  $: stageMetrics = {
+    research: `${activeQuotes}/${watchlistBreadth} quoted`,
+    thesis: `${thesisScore}/3 setup blocks`,
+    backtest: thesisScore >= 2 ? 'Ready for a coach pass' : 'Needs more structure',
+    monitor: `${activeAlertCount} active · ${triggeredAlertCount} triggered`,
+    act: hasPosition ? 'Position live' : 'Flat',
+    review: `${reviewCount} review${reviewCount === 1 ? '' : 's'} due`
+  }
+  $: nextAction = !thesisReady
+    ? 'Write the thesis before you trust the ticket.'
+    : !triggerReady
+      ? 'Define the trigger so this becomes a real setup.'
+      : !riskReady
+        ? 'Add invalidation or risk guardrails before acting.'
+        : activeStage === 'act'
+          ? 'Execution is unlocked — keep size honest.'
+          : 'The setup is structured enough to move forward.'
 </script>
 
 <main class="min-h-screen bg-[#07111f] text-slate-100">
@@ -65,7 +119,7 @@
           </div>
           <h1 class="text-4xl font-semibold tracking-tight text-white sm:text-5xl">Pounce</h1>
           <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-            A broker-style trading workspace inspired by modern retail and institutional dashboards — multi-horizon charts, account intelligence, a research surface, order entry, holdings, execution history, and now a lightweight thesis journal in one place.
+            A workflow-driven trading workspace: keep the watchlist on the rail, work one stage at a time in the main canvas, and stop treating the product like one endless dashboard.
           </p>
         </div>
 
@@ -75,6 +129,9 @@
           </div>
           <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
             Timeframe: <span class="font-semibold text-white">{$store.selectedTimeframe}</span>
+          </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
+            Active stage: <span class="font-semibold text-white">{workflowSteps.find((step) => step.id === activeStage)?.label}</span>
           </div>
           <button on:click={resetStore} class="rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm font-medium text-slate-200 transition hover:border-rose-500/50 hover:text-white">
             Reset portfolio
@@ -120,26 +177,36 @@
         </div>
       </div>
 
-      <nav aria-label="Workflow" class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-3 shadow-2xl shadow-black/20 backdrop-blur">
-        <div class="mb-3 flex items-center justify-between gap-3">
+      <nav aria-label="Workflow stages" class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-3 shadow-2xl shadow-black/20 backdrop-blur">
+        <div class="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Workflow</div>
-            <div class="mt-1 text-sm text-slate-300">Research → thesis → backtest → monitor → act → review.</div>
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Workspace navigation</div>
+            <div class="mt-1 text-sm text-slate-300">Work one stage at a time while the left rail keeps symbol context pinned.</div>
           </div>
           <div class="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-400">
-            Focus: <span class="font-semibold text-white">{$store.selectedSymbol}</span>
+            Next action: <span class="font-semibold text-white">{nextAction}</span>
           </div>
         </div>
-        <div class="mb-3 text-xs text-slate-500">Jump by stage now; these can become dedicated views later.</div>
-        <div class="flex flex-wrap gap-2">
+
+        <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-6">
           {#each workflowSteps as step, index}
-            <a
-              href={`#${step.id}`}
-              class="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-300 transition hover:border-sky-500/50 hover:text-white"
-              aria-label={`${String(index + 1).padStart(2, '0')} ${step.label} — ${step.description}`}
+            <button
+              type="button"
+              on:click={() => selectStage(step.id)}
+              class={`rounded-2xl border px-4 py-3 text-left transition ${stageButtonClass(step.id)}`}
+              aria-pressed={activeStage === step.id}
+              data-testid={`stage-tab-${step.id}`}
             >
-              <span class="mr-2 text-xs text-slate-500">0{index + 1}</span>{step.label}
-            </a>
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-xs text-slate-500">{String(index + 1).padStart(2, '0')}</span>
+                {#if activeStage === step.id}
+                  <span class="rounded-full border border-sky-400/40 bg-sky-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-sky-200">Live</span>
+                {/if}
+              </div>
+              <div class="mt-2 text-sm font-semibold">{step.label}</div>
+              <div class="mt-1 text-xs text-slate-400">{step.description}</div>
+              <div class="mt-3 text-xs text-slate-500">{stageMetrics[step.id]}</div>
+            </button>
           {/each}
         </div>
       </nav>
@@ -147,65 +214,86 @@
   </section>
 
   <section class="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-    <div id="monitor" class="scroll-mt-28">
-      <WatchlistPanel />
-    </div>
-
-    <div class="space-y-6">
-      <section id="research" class="scroll-mt-28 space-y-6 rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1">
+    <aside class="space-y-6 xl:sticky xl:top-6 xl:self-start">
+      <div class="rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1">
         <div class="rounded-2xl border border-slate-800/80 bg-slate-950/60 px-5 py-4">
-          <div class="text-xs uppercase tracking-[0.2em] text-sky-300">Research</div>
-          <h2 class="mt-1 text-lg font-semibold text-white">What matters now</h2>
-          <p class="mt-1 text-sm text-slate-400">Pair price context with live-ish research before you decide there’s a real setup here.</p>
+          <div class="text-xs uppercase tracking-[0.2em] text-emerald-300">Context rail</div>
+          <h2 class="mt-1 text-lg font-semibold text-white">Universe + setup state</h2>
+          <p class="mt-1 text-sm text-slate-400">Keep the symbol queue visible while the main canvas swaps by workflow stage.</p>
+          <div class="mt-4 grid gap-3 text-sm text-slate-300">
+            <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+              <div class="text-xs uppercase tracking-[0.16em] text-slate-500">Focus symbol</div>
+              <div class="mt-1 font-semibold text-white">{$store.selectedSymbol}</div>
+            </div>
+            <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+              <div class="text-xs uppercase tracking-[0.16em] text-slate-500">Setup completeness</div>
+              <div class="mt-1 font-semibold text-white">{thesisScore}/3 blocks written</div>
+              <div class="mt-1 text-xs text-slate-500">Thesis, trigger, risk</div>
+            </div>
+          </div>
         </div>
-        <MarketOverview />
-        <ResearchPanel />
-      </section>
+        <WatchlistPanel />
+      </div>
+    </aside>
 
-      <section id="thesis" class="scroll-mt-28 space-y-6 rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1">
-        <div class="rounded-2xl border border-slate-800/80 bg-slate-950/60 px-5 py-4">
-          <div class="text-xs uppercase tracking-[0.2em] text-violet-300">Thesis</div>
-          <h2 class="mt-1 text-lg font-semibold text-white">Why this trade exists</h2>
-          <p class="mt-1 text-sm text-slate-400">Capture the idea, trigger, and risk plan before the ticket starts whispering bad ideas.</p>
-        </div>
-        <TradeJournalPanel />
-      </section>
-
-      <section id="backtest" class="scroll-mt-28 rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1">
-        <BacktestPanel />
-      </section>
-
-      <section class="space-y-6 rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1">
-        <div class="rounded-2xl border border-slate-800/80 bg-slate-950/60 px-5 py-4">
-          <div class="text-xs uppercase tracking-[0.2em] text-emerald-300">Monitor</div>
-          <h2 class="mt-1 text-lg font-semibold text-white">What needs attention</h2>
-          <p class="mt-1 text-sm text-slate-400">Use account and accountability context to see whether the setup is still healthy or needs cleanup.</p>
-        </div>
-        <AccountPanel />
-        <AccountabilityPanel />
-      </section>
-
-      <section id="act" class="scroll-mt-28 space-y-6 rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1">
-        <div class="rounded-2xl border border-slate-800/80 bg-slate-950/60 px-5 py-4">
-          <div class="text-xs uppercase tracking-[0.2em] text-rose-300">Act</div>
-          <h2 class="mt-1 text-lg font-semibold text-white">Place the trade</h2>
-          <p class="mt-1 text-sm text-slate-400">Execution belongs after context, with the thesis and risk plan still in view.</p>
-        </div>
-        <QuotePanel />
-      </section>
-
-      <section id="review" class="scroll-mt-28 space-y-6 rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1">
-        <div class="rounded-2xl border border-slate-800/80 bg-slate-950/60 px-5 py-4">
-          <div class="text-xs uppercase tracking-[0.2em] text-cyan-300">Review</div>
-          <h2 class="mt-1 text-lg font-semibold text-white">Learn from the outcome</h2>
-          <p class="mt-1 text-sm text-slate-400">Tie live positions and execution history back to the original idea so the loop actually closes.</p>
-          <div class="mt-3 text-sm font-medium text-slate-200">Portfolio + journal review</div>
-        </div>
-        <div class="grid gap-6 2xl:grid-cols-[1fr_1fr]">
-          <Portfolio />
-          <ActivityFeed />
-        </div>
-      </section>
+    <div>
+      {#if activeStage === 'research'}
+        <section class="space-y-6 rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1" data-testid="stage-panel-research">
+          <div class="rounded-2xl border border-slate-800/80 bg-slate-950/60 px-5 py-4">
+            <div class="text-xs uppercase tracking-[0.2em] text-sky-300">Research</div>
+            <h2 class="mt-1 text-lg font-semibold text-white">What matters now</h2>
+            <p class="mt-1 text-sm text-slate-400">Pair price context with live-ish research before you decide there’s a real setup here.</p>
+          </div>
+          <MarketOverview />
+          <ResearchPanel />
+        </section>
+      {:else if activeStage === 'thesis'}
+        <section class="space-y-6 rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1" data-testid="stage-panel-thesis">
+          <div class="rounded-2xl border border-slate-800/80 bg-slate-950/60 px-5 py-4">
+            <div class="text-xs uppercase tracking-[0.2em] text-violet-300">Thesis</div>
+            <h2 class="mt-1 text-lg font-semibold text-white">Why this trade exists</h2>
+            <p class="mt-1 text-sm text-slate-400">Capture the idea, trigger, and risk plan before the ticket starts whispering bad ideas.</p>
+          </div>
+          <TradeJournalPanel />
+          <QuotePanel mode="thesis" />
+        </section>
+      {:else if activeStage === 'backtest'}
+        <section class="rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1" data-testid="stage-panel-backtest">
+          <BacktestPanel />
+        </section>
+      {:else if activeStage === 'monitor'}
+        <section class="space-y-6 rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1" data-testid="stage-panel-monitor">
+          <div class="rounded-2xl border border-slate-800/80 bg-slate-950/60 px-5 py-4">
+            <div class="text-xs uppercase tracking-[0.2em] text-emerald-300">Monitor</div>
+            <h2 class="mt-1 text-lg font-semibold text-white">What needs attention</h2>
+            <p class="mt-1 text-sm text-slate-400">Use account and accountability context to decide whether the setup is healthy, stale, or needs cleanup.</p>
+          </div>
+          <AccountPanel />
+          <AccountabilityPanel />
+        </section>
+      {:else if activeStage === 'act'}
+        <section class="space-y-6 rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1" data-testid="stage-panel-act">
+          <div class="rounded-2xl border border-slate-800/80 bg-slate-950/60 px-5 py-4">
+            <div class="text-xs uppercase tracking-[0.2em] text-rose-300">Act</div>
+            <h2 class="mt-1 text-lg font-semibold text-white">Place the trade</h2>
+            <p class="mt-1 text-sm text-slate-400">Execution belongs downstream of context, with the setup already defined and the watchlist still in reach.</p>
+          </div>
+          <QuotePanel mode="act" />
+        </section>
+      {:else if activeStage === 'review'}
+        <section class="space-y-6 rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1" data-testid="stage-panel-review">
+          <div class="rounded-2xl border border-slate-800/80 bg-slate-950/60 px-5 py-4">
+            <div class="text-xs uppercase tracking-[0.2em] text-cyan-300">Review</div>
+            <h2 class="mt-1 text-lg font-semibold text-white">Learn from the outcome</h2>
+            <p class="mt-1 text-sm text-slate-400">Tie open positions and execution history back to the original idea so the loop actually closes.</p>
+            <div class="mt-3 text-sm font-medium text-slate-200">Portfolio + journal review</div>
+          </div>
+          <div class="grid gap-6 2xl:grid-cols-[1fr_1fr]">
+            <Portfolio />
+            <ActivityFeed />
+          </div>
+        </section>
+      {/if}
     </div>
   </section>
 </main>

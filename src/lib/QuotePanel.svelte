@@ -5,6 +5,8 @@
   import store, { buy, getJournal, saveThesisCritique, saveThesisDraft, sell, setOrderTicket, setQuote, setSelectedSymbol, updateTradeJournal } from '../store'
   import type { OrderType, SetupConviction, SetupPriority, SetupStatus, TradeJournal } from '../types'
 
+  export let mode: 'thesis' | 'act' = 'act'
+
   const presets = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'META']
   const orderTypes: OrderType[] = ['Market', 'Limit', 'Stop']
   const setupStatuses: SetupStatus[] = ['Watching', 'Building', 'Ready', 'Executed', 'Reviewing']
@@ -258,7 +260,7 @@
   <div class="mb-5 flex items-start justify-between gap-4">
     <div>
       <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Quote workstation</p>
-      <h2 class="mt-1 text-lg font-semibold text-white">Research &amp; execute</h2>
+      <h2 class="mt-1 text-lg font-semibold text-white">{mode === 'thesis' ? 'Build the setup' : 'Research &amp; execute'}</h2>
     </div>
     <button on:click={getPrice} disabled={fetching} class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-60">
       {fetching ? 'Fetching…' : 'Refresh quote'}
@@ -330,8 +332,8 @@
   <div class="mt-5 rounded-2xl border border-slate-800 bg-slate-950/70 p-5">
     <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div>
-        <p class="text-sm font-medium text-white">Trade ticket</p>
-        <p class="text-xs text-slate-500">Configure the order style, notional, trigger levels, and journal context before placing a paper trade.</p>
+        <p class="text-sm font-medium text-white">{mode === 'thesis' ? 'Setup builder + ticket' : 'Trade ticket'}</p>
+        <p class="text-xs text-slate-500">{mode === 'thesis' ? 'Use the setup worksheet first; the order controls are still visible here because this prototype has not fully split thesis from execution yet.' : 'Configure the order style, notional, trigger levels, and journal context before placing a paper trade.'}</p>
       </div>
       <div class="text-right">
         <p class="text-xs text-slate-500">Estimated notional</p>
