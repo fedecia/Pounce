@@ -14,7 +14,7 @@ The strongest direction is a **decision-support and accountability cockpit for s
 - **Backtesting-for-dummies** answers "does this idea even deserve screen time?"
 - **Strategy templates** reduce blank-page paralysis
 - **Portfolio + journal accountability** closes the loop between idea, execution, and review
-- **Funny nickname toggle** keeps the app human and memorable instead of sounding like a joyless fintech clone
+- **Optional playful labeling** keeps the app human and memorable without turning it into a gimmick
 
 If we stay disciplined, the app can feel distinct: practical, slightly irreverent, and built for people who want better habits more than more buttons.
 
@@ -53,7 +53,7 @@ Users should be able to start from a proven structure instead of inventing every
 The app should make it mildly uncomfortable to take impulsive trades without a plan, and easy to review mistakes later.
 
 ### 6) Personality
-A tiny bit of humor is part of the brand. The product should feel sharp, useful, and self-aware — not sterile.
+A little humor is part of the brand, but it must stay secondary. The product should feel sharp, useful, and self-aware - not sterile, and not clownish.
 
 ## Clear priorities
 
@@ -66,7 +66,7 @@ A tiny bit of humor is part of the brand. The product should feel sharp, useful,
 ### Important, but secondary
 5. Richer research synthesis
 6. Portfolio review scorecards
-7. Funny nickname / tone customization
+7. Optional tone / naming customization
 
 ### Deliberately lower priority
 8. More broker-style surface polish
@@ -87,7 +87,7 @@ These are the things we should explicitly avoid for now:
 
 ## Roadmap by phase
 
-## Phase 1 — Near-term (next implementation cycle)
+## Phase 1 - Near-term (next implementation cycle)
 **Theme:** make the current app coherent around thesis + alerts + accountability.
 
 ### What to ship
@@ -154,12 +154,17 @@ Why first:
 - this is the product's behavioral moat
 - it turns portfolio + journal data into actual consequences
 
-#### 5. Funny nickname toggle
-Add a simple personality setting for labels/tone.
+#### 5. Optional naming / tone toggle
+Add a lightweight personality setting for labels and explanations.
 
 Examples:
-- serious mode: `Watchlist`, `Alerts`, `Journal`
-- funny mode: `Sus List`, `Panic Bell`, `Bagholder Diary`
+- standard mode: `Watchlist`, `Alerts`, `Journal`
+- playful mode: slightly more human strategy labels and explainer copy
+
+Guardrails:
+- keep it cosmetic
+- never replace core financial terminology everywhere
+- avoid deep pet-mode gimmicks in the main workflow
 
 Why now:
 - cheap to build
@@ -180,7 +185,7 @@ Move to the next phase only when the app reliably supports:
 - execution with journal carryover
 - post-trade review prompts
 
-## Phase 2 — Medium-term
+## Phase 2 - Medium-term
 **Theme:** help users decide whether a setup deserves trust.
 
 ### What to ship
@@ -241,7 +246,7 @@ This matters more than adding more data panels.
 - review completion rate increases
 - more trades are graded on process, not just P&L
 
-## Phase 3 — Later
+## Phase 3 - Later
 **Theme:** compounding workflow intelligence without bloating the app.
 
 ### What to ship
@@ -281,25 +286,25 @@ Only after equities workflow is solid:
 
 This is the order I would actually build it in:
 
-1. **Thesis metadata in watchlist rows**  
+1. **Thesis metadata in watchlist rows**
    Add setup status, thesis snippet, and trigger/invalidation summary to the current watchlist and store.
 
-2. **Alert context upgrade**  
+2. **Alert context upgrade**
    Make alert history and triggered alerts carry thesis + recommended next action.
 
-3. **Journal accountability panel**  
+3. **Journal accountability panel**
    Add a dashboard for missing thesis/risk/review fields and stale setups.
 
-4. **Strategy templates v1**  
+4. **Strategy templates v1**
    Prefill journal content and status transitions from a small curated template set.
 
-5. **Funny nickname toggle**  
+5. **Optional naming / tone toggle**
    Cosmetic brand layer once the information architecture is stable.
 
-6. **Backtesting-for-dummies MVP**  
+6. **Backtesting-for-dummies MVP**
    Narrow, guided, preset-driven testing tied to templates.
 
-7. **Research synthesis upgrade**  
+7. **Research synthesis upgrade**
    Improve summaries once the user has a stronger action loop to plug them into.
 
 Why this order:

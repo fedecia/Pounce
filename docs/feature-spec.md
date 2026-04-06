@@ -45,7 +45,7 @@ User converts research into a concrete trade thesis:
 - what breaks it
 - how to size it
 - what the exit logic is
-- optional funny strategy nickname
+- optional strategy nickname / playful label
 
 ### 3.3 Backtest
 User asks: “If I had traded this idea with simple rules, what would have happened?”
@@ -84,7 +84,7 @@ User closes the loop:
 2. **Plain English first, numbers second.** Users should understand results before reading metrics.
 3. **Every trade should have a reason attached.** No orphan executions.
 4. **Monitoring should be thesis-aware, not just price-aware.**
-5. **Humor is welcome if optional.** The funny strategy nickname toggle should add charm, not noise.
+5. **Humor is welcome if optional.** Any playful naming toggle should add charm, not noise.
 6. **Build progressive depth.** New users can stay shallow; advanced users can go deeper.
 
 ## 5. Major feature pillars
@@ -178,7 +178,7 @@ Structured response with:
 - possible entry trigger ideas
 - possible exit logic
 - confidence disclaimer
-- optional suggested strategy nickname if humor toggle is on
+- optional suggested strategy nickname if playful labeling is on
 
 ### Guardrails
 - Must label outputs as AI-assisted draft
@@ -393,7 +393,7 @@ Inject personality without sabotaging serious workflows.
 
 ### Behavior
 Global setting:
-- **Strategy nicknames: Off / Subtle / Full goblin mode**
+- **Strategy naming: Standard / Playful**
 
 ### Modes
 - **Off:** show normal names only
