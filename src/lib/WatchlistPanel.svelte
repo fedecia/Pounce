@@ -1,7 +1,11 @@
 <script lang="ts">
   import store, { addToWatchlist, clearAlertHistory, deleteAlert, removeFromWatchlist, setQuote, setSelectedSymbol, upsertAlert } from '../store'
+  import { createAiClient } from '../ai'
   import { fetchQuote } from '../alpha'
+  import { saveAlertExplanation } from '../store'
   import type { AlertCondition, SetupConviction, SetupPriority, SetupStatus } from '../types'
+
+  const ai = createAiClient()
 
   let newTicker = ''
   let loading = false
@@ -10,6 +14,7 @@
   let alertValue = ''
   let alertError = ''
   let alertSuccess = ''
+  let explainingEventId = ''
 
   const money = (value: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
@@ -97,6 +102,33 @@
         : `${selectedSymbol} alert armed for ${alertDirection === 'above' ? 'a move above' : 'a move below'} ${money(value)}.`
     } catch (error) {
       alertError = error instanceof Error ? error.message : 'Could not create alert'
+    }
+  }
+
+  async function explainEvent(eventId: string) {
+    const event = $store.alertHistory.find((item) => item.id === eventId)
+    if (!event) return
+    explainingEventId = eventId
+    try {
+      const explanation = await ai.explainAlert({
+        event,
+        journal: $store.journals[event.symbol] ?? {
+          thesis: '',
+          thesisSummary: '',
+          entryRationale: '',
+          triggerSummary: '',
+          riskPlan: '',
+          invalidationSummary: '',
+          exitPlan: '',
+          postTradeNotes: '',
+          setupStatus: 'Watching',
+          conviction: 'Medium',
+          priority: 'Standard'
+        }
+      })
+      saveAlertExplanation(event.symbol, event.id, explanation)
+    } finally {
+      explainingEventId = ''
     }
   }
 </script>
@@ -290,10 +322,24 @@
       </div>
       {#if recentHistory.length}
         {#each recentHistory as event}
+          {@const alertExplanation = $store.ai.symbols[event.symbol]?.alertExplanations?.[event.id]}
           <div class="rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm text-slate-300">
             <div class="font-medium text-white">{event.message}</div>
             <div class="mt-1 text-xs text-slate-400">{snippet($store.journals[event.symbol]?.thesisSummary || $store.journals[event.symbol]?.thesis, 86, 'No thesis linked yet.')}</div>
             <div class="mt-1 text-xs text-slate-500">{new Date(event.timestamp).toLocaleString()}</div>
+            <div class="mt-3 flex items-center justify-between gap-3">
+              <button on:click={() => explainEvent(event.id)} class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-sky-500/50 hover:text-white" disabled={explainingEventId === event.id}>
+                {explainingEventId === event.id ? 'Explaining…' : 'Explain this alert'}
+              </button>
+            </div>
+            {#if alertExplanation}
+              <div class="mt-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3" data-testid="alert-ai-explanation">
+                <div class="text-xs uppercase tracking-[0.16em] text-cyan-200">AI alert explanation</div>
+                <div class="mt-2 text-sm text-slate-200">{alertExplanation.explanation}</div>
+                <div class="mt-2 text-sm text-slate-300"><span class="text-slate-500">What changed:</span> {alertExplanation.whatChanged}</div>
+                <div class="mt-2 text-sm text-slate-300"><span class="text-slate-500">Recommended action:</span> {alertExplanation.recommendedAction}</div>
+              </div>
+            {/if}
           </div>
         {/each}
       {:else}

@@ -8,6 +8,7 @@
   import AccountPanel from './lib/AccountPanel.svelte'
   import AccountabilityPanel from './lib/AccountabilityPanel.svelte'
   import ResearchPanel from './lib/ResearchPanel.svelte'
+  import BacktestPanel from './lib/BacktestPanel.svelte'
   import TradeJournalPanel from './lib/TradeJournalPanel.svelte'
   import { fetchQuote } from './alpha'
   import store, { resetStore, setQuote } from './store'
@@ -171,20 +172,7 @@
       </section>
 
       <section id="backtest" class="scroll-mt-28 rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1">
-        <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/60 p-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div class="text-xs uppercase tracking-[0.2em] text-amber-300">Backtest</div>
-              <h2 class="mt-1 text-lg font-semibold text-white">Would this have worked?</h2>
-              <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-                This slot gives the product a real home for the upcoming thesis-to-backtest workflow instead of stuffing it into an already crowded page.
-              </p>
-            </div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
-              Reserved for guided backtest builder + result summary
-            </div>
-          </div>
-        </div>
+        <BacktestPanel />
       </section>
 
       <section class="space-y-6 rounded-[28px] border border-slate-900/60 bg-slate-950/20 p-1">

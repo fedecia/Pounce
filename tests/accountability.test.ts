@@ -1,4 +1,5 @@
 import { getAccountabilitySummary } from '../src/lib/accountability'
+import { emptyAiState } from '../src/ai'
 import type { AppState } from '../src/store'
 
 const makeState = (): AppState => ({
@@ -13,6 +14,7 @@ const makeState = (): AppState => ({
   alerts: {},
   alertHistory: [],
   journals: {},
+  ai: emptyAiState(),
   selectedSymbol: 'AAPL',
   selectedTimeframe: '1D',
   orderTicket: {

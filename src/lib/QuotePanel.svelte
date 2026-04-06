@@ -1,6 +1,8 @@
 <script lang="ts">
   import { fetchQuote } from '../alpha'
-  import store, { buy, getJournal, sell, setOrderTicket, setQuote, setSelectedSymbol, updateTradeJournal } from '../store'
+  import { createAiClient, getSymbolAiState } from '../ai'
+  import { fetchResearchSnapshot } from '../research'
+  import store, { buy, getJournal, saveThesisCritique, saveThesisDraft, sell, setOrderTicket, setQuote, setSelectedSymbol, updateTradeJournal } from '../store'
   import type { OrderType, SetupConviction, SetupPriority, SetupStatus, TradeJournal } from '../types'
 
   const presets = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'META']
@@ -10,6 +12,7 @@
   const priorityOptions: SetupPriority[] = ['Back burner', 'Standard', 'Top']
   const money = (value: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
+  const ai = createAiClient()
 
   let ticker = 'AAPL'
   let fetching = false
@@ -20,6 +23,7 @@
   let stopPrice = 0
   let selectedTif: 'Day' | 'GTC' = 'Day'
   let selectedOrderType: OrderType = 'Market'
+  let aiWorking: '' | 'draft' | 'critique' = ''
   let thesis = ''
   let thesisSummary = ''
   let entryRationale = ''
@@ -85,6 +89,7 @@
   $: journalHint = thesis.trim() || thesisSummary.trim()
     ? 'Setup context will be attached to the next execution.'
     : 'Add a thesis and trigger so the watchlist becomes a real setup queue.'
+  $: aiState = getSymbolAiState(symbol, $store.ai)
   $: void [
     projectedBuyingPower,
     projectedPositionShares,
@@ -129,6 +134,55 @@
   function saveJournal() {
     if (!symbol) return
     updateTradeJournal(symbol, currentJournal())
+  }
+
+  async function draftThesisFromResearch() {
+    if (!symbol) return
+    aiWorking = 'draft'
+    try {
+      const research = await fetchResearchSnapshot(symbol)
+      const draft = await ai.draftThesis({
+        symbol,
+        journal: getJournal(symbol, $store.journals),
+        research,
+        price: quote,
+        trendPct: trend?.pct
+      })
+      saveThesisDraft(symbol, draft)
+      thesisSummary = draft.thesisSummary
+      thesis = draft.thesis
+      triggerSummary = draft.triggerSummary
+      entryRationale = draft.entryRationale
+      invalidationSummary = draft.invalidationSummary
+      riskPlan = draft.riskPlan
+      exitPlan = draft.exitPlan
+      success = `Drafted an AI-assisted thesis for ${symbol}. Review it before saving or trading.`
+      error = ''
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Could not draft thesis'
+    } finally {
+      aiWorking = ''
+    }
+  }
+
+  async function critiqueCurrentThesis() {
+    if (!symbol) return
+    aiWorking = 'critique'
+    try {
+      const research = await fetchResearchSnapshot(symbol)
+      const critique = await ai.critiqueThesis({
+        symbol,
+        journal: getJournal(symbol, { ...$store.journals, [symbol]: { ...getJournal(symbol, $store.journals), ...currentJournal() } }),
+        research
+      })
+      saveThesisCritique(symbol, critique)
+      success = `Critiqued the current ${symbol} thesis. Use the gaps list as a cleanup pass, not gospel.`
+      error = ''
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Could not critique thesis'
+    } finally {
+      aiWorking = ''
+    }
   }
 
   async function getPrice() {
@@ -421,10 +475,63 @@
           <div class="font-medium text-white">Journal status</div>
           <div class="text-slate-500">{journalHint}</div>
         </div>
-        <button type="button" on:click={saveJournal} class="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:border-sky-500/50 hover:text-white">
-          Save setup
-        </button>
+        <div class="flex flex-wrap justify-end gap-2">
+          <button type="button" on:click={draftThesisFromResearch} class="rounded-xl border border-violet-500/30 px-4 py-2 text-sm text-violet-200 transition hover:border-violet-400/60 hover:text-white" disabled={aiWorking !== ''}>
+            {aiWorking === 'draft' ? 'Drafting…' : 'Draft thesis from research'}
+          </button>
+          <button type="button" on:click={critiqueCurrentThesis} class="rounded-xl border border-amber-500/30 px-4 py-2 text-sm text-amber-200 transition hover:border-amber-400/60 hover:text-white" disabled={aiWorking !== ''}>
+            {aiWorking === 'critique' ? 'Critiquing…' : 'Stress-test my thesis'}
+          </button>
+          <button type="button" on:click={saveJournal} class="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:border-sky-500/50 hover:text-white">
+            Save setup
+          </button>
+        </div>
       </div>
+
+      {#if aiState.thesisDraft}
+        <div class="mt-4 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4" data-testid="thesis-ai-draft">
+          <div class="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-violet-200">
+            <span>AI-assisted draft</span>
+            <span class="rounded-full border border-violet-500/30 px-2 py-0.5 text-[10px] normal-case text-violet-100">{aiState.thesisDraft.meta.provider}</span>
+          </div>
+          <div class="mt-2 text-sm text-slate-200">{aiState.thesisDraft.confidenceNote}</div>
+          <div class="mt-3 grid gap-3 md:grid-cols-2">
+            <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-sm text-slate-300">
+              <div class="text-xs uppercase tracking-[0.16em] text-slate-500">Draft summary</div>
+              <div class="mt-2">{aiState.thesisDraft.thesisSummary}</div>
+            </div>
+            <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-sm text-slate-300">
+              <div class="text-xs uppercase tracking-[0.16em] text-slate-500">Trigger idea</div>
+              <div class="mt-2">{aiState.thesisDraft.triggerSummary}</div>
+            </div>
+          </div>
+        </div>
+      {/if}
+
+      {#if aiState.thesisCritique}
+        <div class="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4" data-testid="thesis-ai-critique">
+          <div class="text-xs uppercase tracking-[0.16em] text-amber-200">AI thesis critique</div>
+          <div class="mt-2 text-sm leading-6 text-slate-200">{aiState.thesisCritique.verdict}</div>
+          <div class="mt-3 grid gap-3 md:grid-cols-2">
+            <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-sm text-slate-300">
+              <div class="text-xs uppercase tracking-[0.16em] text-emerald-300">Strengths</div>
+              <ul class="mt-2 space-y-1">
+                {#each aiState.thesisCritique.strengths as item}
+                  <li>• {item}</li>
+                {/each}
+              </ul>
+            </div>
+            <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-sm text-slate-300">
+              <div class="text-xs uppercase tracking-[0.16em] text-rose-300">Gaps</div>
+              <ul class="mt-2 space-y-1">
+                {#each aiState.thesisCritique.gaps as item}
+                  <li>• {item}</li>
+                {/each}
+              </ul>
+            </div>
+          </div>
+        </div>
+      {/if}
     </div>
 
     <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">

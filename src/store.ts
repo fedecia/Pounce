@@ -13,6 +13,7 @@ import type {
   TradeJournal,
   WatchlistAlert
 } from './types'
+import { emptyAiState, type AlertExplanation, type BacktestSummary, type ResearchBrief, type SymbolAiState, type ThesisCritique, type ThesisDraft, withAiMeta } from './ai'
 import { getStrategyTemplate } from './templates'
 
 type Trend = Record<string, { change: number; pct: number }>
@@ -30,6 +31,9 @@ export type AppState = {
   alerts: Record<string, WatchlistAlert[]>
   alertHistory: AlertEvent[]
   journals: Journals
+  ai: {
+    symbols: Record<string, SymbolAiState>
+  }
   selectedSymbol: string
   selectedTimeframe: Timeframe
   orderTicket: {
@@ -57,6 +61,7 @@ const initialState: AppState = {
   alerts: {},
   alertHistory: [],
   journals: {},
+  ai: emptyAiState(),
   selectedSymbol: 'AAPL',
   selectedTimeframe: '1D',
   orderTicket: {
@@ -123,6 +128,11 @@ function loadState(): AppState {
       Object.entries(parsed.journals ?? {}).map(([ticker, journal]) => [ticker, normalizeJournal(journal as Partial<TradeJournal>)])
     )
 
+    const ai = {
+      ...emptyAiState(),
+      ...(parsed.ai ?? {})
+    }
+
     const trades = Array.isArray(parsed.trades)
       ? parsed.trades.map((trade: Trade) => ({
           ...trade,
@@ -130,7 +140,7 @@ function loadState(): AppState {
         }))
       : []
 
-    return { ...clone(initialState), ...parsed, journals, trades }
+    return { ...clone(initialState), ...parsed, journals, ai, trades }
   } catch {
     return clone(initialState)
   }
@@ -423,6 +433,61 @@ export function updateAlertEventAction(eventId: string, workflowState: AlertEven
           }
         : event
     )
+  }))
+}
+
+function updateSymbolAi<T extends keyof SymbolAiState>(symbol: string, key: T, value: SymbolAiState[T]) {
+  const normalized = symbol.toUpperCase().trim()
+  if (!normalized) return
+
+  store.update((state) => ({
+    ...state,
+    ai: {
+      symbols: {
+        ...state.ai.symbols,
+        [normalized]: {
+          ...(state.ai.symbols[normalized] ?? {}),
+          [key]: value
+        }
+      }
+    }
+  }))
+}
+
+export function saveResearchBrief(symbol: string, brief: ResearchBrief) {
+  updateSymbolAi(symbol, 'researchBrief', withAiMeta('research-brief', 'local-heuristic', brief))
+}
+
+export function saveThesisDraft(symbol: string, draft: ThesisDraft) {
+  updateSymbolAi(symbol, 'thesisDraft', withAiMeta('thesis-draft', 'local-heuristic', draft))
+}
+
+export function saveThesisCritique(symbol: string, critique: ThesisCritique) {
+  updateSymbolAi(symbol, 'thesisCritique', withAiMeta('thesis-critique', 'local-heuristic', critique))
+}
+
+export function saveBacktestSummary(symbol: string, summary: BacktestSummary) {
+  updateSymbolAi(symbol, 'backtestSummary', withAiMeta('backtest-summary', 'local-heuristic', summary))
+}
+
+export function saveAlertExplanation(symbol: string, eventId: string, explanation: AlertExplanation) {
+  const normalized = symbol.toUpperCase().trim()
+  if (!normalized || !eventId) return
+
+  store.update((state) => ({
+    ...state,
+    ai: {
+      symbols: {
+        ...state.ai.symbols,
+        [normalized]: {
+          ...(state.ai.symbols[normalized] ?? {}),
+          alertExplanations: {
+            ...((state.ai.symbols[normalized] ?? {}).alertExplanations ?? {}),
+            [eventId]: withAiMeta('alert-explanation', 'local-heuristic', explanation)
+          }
+        }
+      }
+    }
   }))
 }
 
