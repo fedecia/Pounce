@@ -1,14 +1,15 @@
 import { test, expect } from '@playwright/test'
 
-test('Pounce dashboard loads and supports a basic paper trade flow', async ({ page }) => {
+test('Pounce dashboard loads and supports a basic paper trade flow with accountability surfaced', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' })
 
-  await expect(page.getByText('Pounce')).toBeVisible()
+  await expect(page.getByText('Pounce').first()).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Workflow' })).toBeVisible()
+  await expect(page.getByText('What matters now')).toBeVisible()
   await expect(page.getByText('Quote workstation')).toBeVisible()
-  await expect(page.getByText('Open positions')).toBeVisible()
 
   await page.locator('#ticker-input').fill('AAPL')
-  await page.getByRole('button', { name: /Get price/i }).click()
+  await page.getByRole('button', { name: /^Get price$/i }).click()
 
   await expect(page.getByText('Buying power', { exact: true })).toBeVisible()
   await expect(page.getByText('AAPL').first()).toBeVisible()
@@ -22,9 +23,10 @@ test('Pounce dashboard loads and supports a basic paper trade flow', async ({ pa
   await expect(page.getByRole('button', { name: /Buy shares/i })).toBeEnabled()
   await page.getByRole('button', { name: /Buy shares/i }).click()
 
-  await expect(page.getByText('Bought 2 shares of AAPL')).toBeVisible()
+  await page.getByText(/AAPL · 2 shares/i).first().scrollIntoViewIfNeeded()
+  await expect(page.getByText('BUY').first()).toBeVisible()
+  await expect(page.getByText(/AAPL · 2 shares/i).first()).toBeVisible()
   await expect(page.getByText(/2 sh|2 shares/).first()).toBeVisible()
-  await expect(page.getByText('Trades booked')).toBeVisible()
-  await expect(page.getByText('Trade thesis snapshot')).toBeVisible()
   await expect(page.getByText(/trend is stabilizing/i).first()).toBeVisible()
+  await expect(page.getByText('Open positions missing risk plan')).toBeVisible()
 })
