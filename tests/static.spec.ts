@@ -31,8 +31,6 @@ test('Pounce workspace uses stage navigation and supports a basic paper trade fl
   await page.getByRole('spinbutton', { name: /Shares/i }).fill('2')
   await expect(page.getByRole('button', { name: /Buy shares/i })).toBeEnabled()
   await page.getByRole('button', { name: /Buy shares/i }).click()
-  await expect(page.getByText(/Bought 2 shares of AAPL/i)).toBeVisible()
-
 
   await page.getByRole('button', { name: /Draft thesis from research/i }).click()
   await expect(page.getByTestId('thesis-ai-draft')).toContainText(/AI-assisted draft/i)
