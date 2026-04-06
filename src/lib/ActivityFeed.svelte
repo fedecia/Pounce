@@ -27,9 +27,9 @@
   const journalItems = (journal?: TradeJournal) => {
     if (!journal) return []
     return [
-      journal.thesis ? { label: 'Thesis', value: snippet(journal.thesis) } : null,
-      journal.entryRationale ? { label: 'Why now', value: snippet(journal.entryRationale, 90) } : null,
-      journal.riskPlan ? { label: 'Risk', value: snippet(journal.riskPlan, 90) } : null,
+      journal.thesisSummary || journal.thesis ? { label: 'Setup', value: snippet(journal.thesisSummary || journal.thesis) } : null,
+      journal.triggerSummary || journal.entryRationale ? { label: 'Trigger', value: snippet(journal.triggerSummary || journal.entryRationale, 90) } : null,
+      journal.invalidationSummary || journal.riskPlan ? { label: 'Invalidation', value: snippet(journal.invalidationSummary || journal.riskPlan, 90) } : null,
       journal.postTradeNotes ? { label: 'Review', value: snippet(journal.postTradeNotes, 90) } : null
     ].filter(Boolean) as Array<{ label: string; value: string }>
   }
@@ -85,6 +85,8 @@
             <span class="rounded-full border border-slate-700 bg-slate-900/80 px-2.5 py-1 text-slate-300">{trade.orderType}</span>
             {#if trade.journal}
               <span class="rounded-full border border-slate-700 bg-slate-900/80 px-2.5 py-1 text-sky-300">{trade.journal.setupStatus}</span>
+              <span class="rounded-full border border-slate-700 bg-slate-900/80 px-2.5 py-1 text-emerald-300">{trade.journal.conviction}</span>
+              <span class="rounded-full border border-slate-700 bg-slate-900/80 px-2.5 py-1 text-violet-300">{trade.journal.priority}</span>
             {/if}
             <span class="rounded-full border border-slate-700 bg-slate-900/80 px-2.5 py-1 text-slate-400">Execution stored locally</span>
           </div>

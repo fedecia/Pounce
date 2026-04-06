@@ -1,7 +1,7 @@
 <script lang="ts">
   import store, { addToWatchlist, clearAlertHistory, deleteAlert, removeFromWatchlist, setQuote, setSelectedSymbol, upsertAlert } from '../store'
   import { fetchQuote } from '../alpha'
-  import type { AlertCondition } from '../types'
+  import type { AlertCondition, SetupConviction, SetupPriority, SetupStatus } from '../types'
 
   let newTicker = ''
   let loading = false
@@ -14,10 +14,37 @@
   const money = (value: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
 
+  const snippet = (value = '', max = 90, fallback = 'No setup context yet.') => {
+    const clean = value.trim()
+    if (!clean) return fallback
+    return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean
+  }
+
+  const statusTone: Record<SetupStatus, string> = {
+    Watching: 'border-slate-700 bg-slate-900/80 text-slate-200',
+    Building: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
+    Ready: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
+    Executed: 'border-sky-500/30 bg-sky-500/10 text-sky-200',
+    Reviewing: 'border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-200'
+  }
+
+  const convictionTone: Record<SetupConviction, string> = {
+    Low: 'border-slate-700 bg-slate-900/80 text-slate-300',
+    Medium: 'border-sky-500/30 bg-sky-500/10 text-sky-200',
+    High: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+  }
+
+  const priorityTone: Record<SetupPriority, string> = {
+    'Back burner': 'border-slate-700 bg-slate-900/80 text-slate-300',
+    Standard: 'border-violet-500/30 bg-violet-500/10 text-violet-200',
+    Top: 'border-rose-500/30 bg-rose-500/10 text-rose-200'
+  }
+
   $: selectedSymbol = $store.selectedSymbol
   $: selectedQuote = $store.quotes[selectedSymbol] || $store.prices[selectedSymbol] || 0
   $: symbolAlerts = $store.alerts[selectedSymbol] ?? []
   $: recentHistory = $store.alertHistory.slice(0, 6)
+  $: selectedJournal = $store.journals[selectedSymbol]
 
   async function addSymbol() {
     const symbol = newTicker.toUpperCase().trim()
@@ -79,7 +106,7 @@
     <div class="mb-4 flex items-center justify-between">
       <div>
         <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Watchlist</p>
-        <h2 class="mt-1 text-lg font-semibold text-white">Markets</h2>
+        <h2 class="mt-1 text-lg font-semibold text-white">Setup queue</h2>
       </div>
       <span class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">{$store.watchlist.length} symbols</span>
     </div>
@@ -91,39 +118,54 @@
       </button>
     </div>
 
-    <div class="space-y-2">
+    <div class="space-y-3">
       {#each $store.watchlist as symbol}
         {@const price = $store.prices[symbol] || $store.quotes[symbol] || 0}
         {@const trend = $store.trend[symbol]}
         {@const alerts = $store.alerts[symbol] ?? []}
         {@const activeCount = alerts.filter((alert) => alert.status === 'active').length}
         {@const triggeredCount = alerts.filter((alert) => alert.status === 'triggered').length}
+        {@const journal = $store.journals[symbol]}
         <div class:selected={$store.selectedSymbol === symbol} class="rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 transition hover:border-sky-500/40 hover:bg-slate-950">
-          <div class="flex items-center justify-between gap-2">
-            <button on:click={() => setSelectedSymbol(symbol)} class="flex flex-1 items-center justify-between text-left">
-              <div>
-                <div class="font-medium text-white">{symbol}</div>
-                <div class="text-xs text-slate-500">{trend ? `${trend.pct >= 0 ? '+' : ''}${trend.pct.toFixed(2)}%` : 'Awaiting quote'}</div>
+          <div class="flex items-start justify-between gap-2">
+            <button on:click={() => setSelectedSymbol(symbol)} class="flex flex-1 gap-3 text-left">
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <div class="font-medium text-white">{symbol}</div>
+                  <span class={`rounded-full border px-2.5 py-1 text-[11px] ${statusTone[journal?.setupStatus ?? 'Watching']}`}>{journal?.setupStatus ?? 'Watching'}</span>
+                  <span class={`rounded-full border px-2.5 py-1 text-[11px] ${convictionTone[journal?.conviction ?? 'Medium']}`}>{journal?.conviction ?? 'Medium'} conv.</span>
+                  <span class={`rounded-full border px-2.5 py-1 text-[11px] ${priorityTone[journal?.priority ?? 'Standard']}`}>{journal?.priority ?? 'Standard'}</span>
+                </div>
+                <div class="mt-2 text-sm leading-5 text-slate-200">{snippet(journal?.thesisSummary || journal?.thesis, 88)}</div>
+                <div class="mt-2 grid gap-2 text-xs text-slate-400 md:grid-cols-2">
+                  <div class="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2">
+                    <span class="text-slate-500">Trigger:</span> {snippet(journal?.triggerSummary || journal?.entryRationale, 56, 'Still defining the trigger.')}
+                  </div>
+                  <div class="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2">
+                    <span class="text-slate-500">Invalidation:</span> {snippet(journal?.invalidationSummary || journal?.riskPlan, 56, 'No invalidation written yet.')}
+                  </div>
+                </div>
               </div>
-              <div class="pr-3 text-right">
+              <div class="pr-1 text-right">
                 <div class="font-medium text-white">{price ? money(price) : '—'}</div>
                 <div class:text-emerald-400={trend && trend.change >= 0} class:text-rose-400={trend && trend.change < 0} class="text-xs">
-                  {trend ? `${trend.change >= 0 ? '+' : ''}${trend.change.toFixed(2)}` : '—'}
+                  {trend ? `${trend.pct >= 0 ? '+' : ''}${trend.pct.toFixed(2)}%` : 'Awaiting quote'}
                 </div>
               </div>
             </button>
             <button on:click={() => removeFromWatchlist(symbol)} class="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-400 hover:border-rose-500/50 hover:text-rose-300">×</button>
           </div>
-          {#if alerts.length}
-            <div class="mt-3 flex flex-wrap gap-2">
-              {#if activeCount}
-                <span class="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-200">{activeCount} active alert{activeCount === 1 ? '' : 's'}</span>
-              {/if}
-              {#if triggeredCount}
-                <span class="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] text-emerald-200">{triggeredCount} triggered</span>
-              {/if}
-            </div>
-          {/if}
+          <div class="mt-3 flex flex-wrap gap-2">
+            {#if activeCount}
+              <span class="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-200">{activeCount} active alert{activeCount === 1 ? '' : 's'}</span>
+            {/if}
+            {#if triggeredCount}
+              <span class="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] text-emerald-200">{triggeredCount} triggered</span>
+            {/if}
+            {#if !activeCount && !triggeredCount}
+              <span class="rounded-full border border-slate-700 bg-slate-900/80 px-2.5 py-1 text-[11px] text-slate-400">No alerts armed</span>
+            {/if}
+          </div>
         </div>
       {/each}
     </div>
@@ -134,13 +176,31 @@
       <div>
         <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Alert center</p>
         <h2 class="mt-1 text-lg font-semibold text-white">{selectedSymbol} triggers</h2>
-        <p class="mt-1 text-sm text-slate-400">Alerts fire during quote refreshes and stay visible after they trip.</p>
+        <p class="mt-1 text-sm text-slate-400">Arm alerts against a setup, not just a price. The setup context stays visible while the mark updates.</p>
       </div>
       <div class="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-right text-xs text-slate-400">
         <div>Mark</div>
         <div class="mt-1 text-sm font-medium text-white">{selectedQuote ? money(selectedQuote) : 'Awaiting quote'}</div>
       </div>
     </div>
+
+    {#if selectedJournal}
+      <div class="mt-4 grid gap-3 md:grid-cols-2">
+        <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-sm">
+          <div class="text-xs uppercase tracking-[0.16em] text-slate-500">Current setup</div>
+          <div class="mt-2 text-white">{snippet(selectedJournal.thesisSummary || selectedJournal.thesis, 110)}</div>
+          <div class="mt-2 flex flex-wrap gap-2 text-[11px]">
+            <span class={`rounded-full border px-2.5 py-1 ${statusTone[selectedJournal.setupStatus]}`}>{selectedJournal.setupStatus}</span>
+            <span class={`rounded-full border px-2.5 py-1 ${convictionTone[selectedJournal.conviction]}`}>{selectedJournal.conviction} conviction</span>
+            <span class={`rounded-full border px-2.5 py-1 ${priorityTone[selectedJournal.priority]}`}>{selectedJournal.priority}</span>
+          </div>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-300">
+          <div><span class="text-slate-500">Trigger:</span> {snippet(selectedJournal.triggerSummary || selectedJournal.entryRationale, 88, 'Still defining the trigger.')}</div>
+          <div class="mt-2"><span class="text-slate-500">Invalidation:</span> {snippet(selectedJournal.invalidationSummary || selectedJournal.riskPlan, 88, 'No invalidation written yet.')}</div>
+        </div>
+      </div>
+    {/if}
 
     <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
       <label class="block">
@@ -202,6 +262,9 @@
                     {alert.target.toFixed(2)}% from {alert.baselinePrice ? money(alert.baselinePrice) : '—'}
                   {/if}
                 </div>
+                <div class="mt-2 text-xs text-slate-400">
+                  <span class="text-slate-500">Setup:</span> {snippet(selectedJournal?.thesisSummary || selectedJournal?.thesis, 84, 'No thesis linked yet.')}
+                </div>
                 <div class="mt-1 text-xs text-slate-500">
                   Armed {new Date(alert.createdAt).toLocaleString()} · Last mark {alert.lastPrice ? money(alert.lastPrice) : '—'}
                   {#if alert.triggeredAt}
@@ -229,6 +292,7 @@
         {#each recentHistory as event}
           <div class="rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm text-slate-300">
             <div class="font-medium text-white">{event.message}</div>
+            <div class="mt-1 text-xs text-slate-400">{snippet($store.journals[event.symbol]?.thesisSummary || $store.journals[event.symbol]?.thesis, 86, 'No thesis linked yet.')}</div>
             <div class="mt-1 text-xs text-slate-500">{new Date(event.timestamp).toLocaleString()}</div>
           </div>
         {/each}
@@ -251,7 +315,7 @@
         Alerts now piggyback on quote refreshes, so a quick watchlist scan can actually surface setups.
       </div>
       <div class="rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3">
-        Portfolio, trades, and alert history persist locally, so refreshes won’t wipe your tape.
+        Watchlist rows now carry thesis, trigger, invalidation, and priority — the useful bits, not just the ticker.
       </div>
     </div>
   </div>

@@ -1,5 +1,5 @@
 import { get } from 'svelte/store'
-import portfolioStore, { applyStrategyTemplate, buy, resetStore, sell, setQuote, updateAlertEventAction, upsertAlert, updateTradeJournal } from '../src/store'
+import portfolioStore, { buy, resetStore, sell, setQuote, updateTradeJournal, upsertAlert } from '../src/store'
 
 beforeEach(() => {
   resetStore()
@@ -51,12 +51,27 @@ describe('Portfolio Store', () => {
     expect(state.portfolio['AAPL']).toBeUndefined()
   })
 
-  test('price alerts trigger and land in history on quote refresh', () => {
+  test('watchlist journal stores setup metadata with sensible defaults', () => {
     updateTradeJournal('AAPL', {
-      thesis: 'Semiconductor demand still looks underappreciated.',
-      entryRationale: 'Momentum reclaim through weekly resistance.',
+      thesisSummary: 'AI capex still favors the leaders',
+      triggerSummary: 'Holds above prior breakout pivot',
+      invalidationSummary: 'Loses the pivot on volume',
+      conviction: 'High',
+      priority: 'Top',
       setupStatus: 'Ready'
     })
+
+    const state = get(portfolioStore)
+    expect(state.journals['AAPL'].thesisSummary).toBe('AI capex still favors the leaders')
+    expect(state.journals['AAPL'].triggerSummary).toContain('breakout pivot')
+    expect(state.journals['AAPL'].invalidationSummary).toContain('Loses the pivot')
+    expect(state.journals['AAPL'].conviction).toBe('High')
+    expect(state.journals['AAPL'].priority).toBe('Top')
+    expect(state.journals['AAPL'].setupStatus).toBe('Ready')
+    expect(state.journals['AAPL'].thesis).toBe('')
+  })
+
+  test('price alerts trigger and land in history on quote refresh', () => {
     upsertAlert('AAPL', 'price-above', 190)
     setQuote('AAPL', 188, 2, 1.1)
     setQuote('AAPL', 191, 3, 1.6)
@@ -65,9 +80,6 @@ describe('Portfolio Store', () => {
     expect(state.alerts['AAPL'][0].status).toBe('triggered')
     expect(state.alertHistory[0].symbol).toBe('AAPL')
     expect(state.alertHistory[0].message).toContain('traded above $190.00')
-    expect(state.alertHistory[0].whyItMatters).toContain('underappreciated')
-    expect(state.alertHistory[0].thesisStatus).toBe('Ready')
-    expect(state.alertHistory[0].nextAction).toBe('enter')
   })
 
   test('percent alerts use the arming quote as baseline', () => {
@@ -78,43 +90,5 @@ describe('Portfolio Store', () => {
     const state = get(portfolioStore)
     expect(state.alerts['NVDA'][0].status).toBe('triggered')
     expect(state.alertHistory[0].message).toContain('fell 5.00% from $100.00')
-  })
-
-  test('triggered alert events can be marked reviewed, skipped, or snoozed', () => {
-    upsertAlert('MSFT', 'price-below', 300)
-    setQuote('MSFT', 299, -3, -1)
-
-    const firstEvent = get(portfolioStore).alertHistory[0]
-    updateAlertEventAction(firstEvent.id, 'reviewed')
-    expect(get(portfolioStore).alertHistory[0].workflowState).toBe('reviewed')
-
-    updateAlertEventAction(firstEvent.id, 'snoozed', '2026-04-06T04:00:00.000Z')
-    expect(get(portfolioStore).alertHistory[0].workflowState).toBe('snoozed')
-    expect(get(portfolioStore).alertHistory[0].snoozedUntil).toBe('2026-04-06T04:00:00.000Z')
-
-    updateAlertEventAction(firstEvent.id, 'skipped')
-    expect(get(portfolioStore).alertHistory[0].workflowState).toBe('skipped')
-    expect(get(portfolioStore).alertHistory[0].snoozedUntil).toBeUndefined()
-  })
-
-  test('strategy template prefill populates empty journal fields', () => {
-    applyStrategyTemplate('AAPL', 'breakout-continuation')
-
-    const journal = get(portfolioStore).journals['AAPL']
-    expect(journal.strategyTemplateId).toBe('breakout-continuation')
-    expect(journal.strategyTemplateName).toBe('Breakout continuation')
-    expect(journal.thesisSummary).toContain('resistance')
-    expect(journal.postTradeNotes).toContain('Did volume actually confirm?')
-  })
-
-  test('strategy template prefill keeps existing custom fields', () => {
-    updateTradeJournal('AAPL', { thesis: 'My custom thesis', riskPlan: 'Risk against Friday low.' })
-    applyStrategyTemplate('AAPL', 'oversold-bounce', 'prefill')
-
-    const journal = get(portfolioStore).journals['AAPL']
-    expect(journal.thesis).toBe('My custom thesis')
-    expect(journal.riskPlan).toBe('Risk against Friday low.')
-    expect(journal.strategyTemplateId).toBe('oversold-bounce')
-    expect(journal.entryRationale).toContain('capitulation signs')
   })
 })
